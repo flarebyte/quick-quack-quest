@@ -1,0 +1,5 @@
+query_id,param_name,duckdb_type,required,description,example
+sales_by_country,start_date,DATE,true,Inclusive start date,2026-01-01
+sales_by_country,end_date,DATE,true,Inclusive end date,2026-01-31
+events_per_day,event_name,VARCHAR,true,Event type to include,page_view
+customer_360,customer_id,VARCHAR,true,Customer id to inspect,C-001

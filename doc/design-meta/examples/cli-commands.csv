@@ -1,0 +1,9 @@
+command_id,group,command,summary,arguments,flags,output
+C001,dataset,dataset list,List declared datasets and metadata,,--format,--format table|json
+C002,dataset,dataset validate <dataset-id>,Validate one dataset file contract,dataset-id,--config --strict,--format table|json
+C003,dataset,dataset validate-all,Validate all declared datasets,,--config --fail-fast,--format table|json
+C004,dataset,dataset inspect <dataset-id>,Print discovered columns and inferred types,dataset-id,--sample-size,--format table|json
+C005,query,query list,List registered parameterized queries,,--format,--format table|json
+C006,query,query run <query-id>,Execute one query with parameters,query-id,--param key=value --limit --output,--format table|json|csv
+C007,query,query explain <query-id>,Show SQL and resolved datasets without execution,query-id,--param key=value,--format text|json
+C008,config,config validate,Validate CUE config structure and references,,--config,--format table|json
