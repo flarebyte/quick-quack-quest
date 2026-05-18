@@ -16,6 +16,7 @@ Spec for a Go+Cobra CLI to validate datasets and execute DuckDB queries from CUE
 | Expose validation and query operations through clear command hierarchy | F004 | Cobra CLI command groups | high |
 | Resolve datasets and parameters without executing SQL for safe inspection | F005 | Dry run query planning | medium |
 | Support json or table output for CI and automation | F006 | Machine readable command output | medium |
+| Optionally validate a random subset of rows for very large files while keeping full validation available | F007 | Random sample dataset validation | medium |
 
 #### CLI Overview
 
@@ -28,8 +29,8 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 | arguments | command | command_id | flags | group | output | summary |
 | --- | --- | --- | --- | --- | --- | --- |
 |  | dataset list | C001 | --format | dataset | --format table\|json | List declared datasets and metadata |
-| dataset-id | dataset validate <dataset-id> | C002 | --config --strict | dataset | --format table\|json | Validate one dataset file contract |
-|  | dataset validate-all | C003 | --config --fail-fast | dataset | --format table\|json | Validate all declared datasets |
+| dataset-id | dataset validate <dataset-id> | C002 | --config --strict --random-sample-rows --sample-seed | dataset | --format table\|json | Validate one dataset file contract |
+|  | dataset validate-all | C003 | --config --fail-fast --random-sample-rows --sample-seed | dataset | --format table\|json | Validate all declared datasets |
 | dataset-id | dataset inspect <dataset-id> | C004 | --sample-size | dataset | --format table\|json | Print discovered columns and inferred types |
 |  | query list | C005 | --format | query | --format table\|json | List registered parameterized queries |
 | query-id | query run <query-id> | C006 | --param key=value --limit --output | query | --format table\|json\|csv | Execute one query with parameters |
@@ -154,12 +155,21 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 package designmeta
 
 cliSpec: #CliSpec & {
+	validation: {
+		// Optional default sample size used by dataset validation on very large files.
+		random_sample_rows: 100000
+	}
+
 	datasets: [
 		{
 			id:          "sales_daily"
 			format:      "csv"
 			path:        "doc/design-meta/examples/input/sales.csv"
 			description: "Daily store product sales transactions"
+			validation: {
+				// Per-dataset override for faster validation loops.
+				random_sample_rows: 50000
+			}
 			metadata: {
 				owner:       "analytics"
 				primary_key: "sale_id"
@@ -280,6 +290,10 @@ package designmeta
 	format:      #DatasetFormat
 	path:        string & !=""
 	description: string & !=""
+	validation?: {
+		// Optional: when set, validate this random sample size instead of full scan.
+		random_sample_rows?: int & >0
+	}
 	metadata: {
 		owner:       string & !=""
 		primary_key: string & !=""
@@ -302,6 +316,10 @@ package designmeta
 }
 
 #CliSpec: {
+	validation?: {
+		// Optional global default for large datasets; can be overridden per dataset.
+		random_sample_rows?: int & >0
+	}
 	datasets: [...#Dataset] & [_, ...]
 	queries:  [...#Query] & [_, ...]
 }

@@ -37,6 +37,10 @@ package designmeta
 	format:      #DatasetFormat
 	path:        string & !=""
 	description: string & !=""
+	validation?: {
+		// Optional: when set, validate this random sample size instead of full scan.
+		random_sample_rows?: int & >0
+	}
 	metadata: {
 		owner:       string & !=""
 		primary_key: string & !=""
@@ -59,6 +63,10 @@ package designmeta
 }
 
 #CliSpec: {
+	validation?: {
+		// Optional global default for large datasets; can be overridden per dataset.
+		random_sample_rows?: int & >0
+	}
 	datasets: [...#Dataset] & [_, ...]
 	queries:  [...#Query] & [_, ...]
 }

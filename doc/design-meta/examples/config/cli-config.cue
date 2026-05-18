@@ -1,12 +1,21 @@
 package designmeta
 
 cliSpec: #CliSpec & {
+	validation: {
+		// Optional default sample size used by dataset validation on very large files.
+		random_sample_rows: 100000
+	}
+
 	datasets: [
 		{
 			id:          "sales_daily"
 			format:      "csv"
 			path:        "doc/design-meta/examples/input/sales.csv"
 			description: "Daily store product sales transactions"
+			validation: {
+				// Per-dataset override for faster validation loops.
+				random_sample_rows: 50000
+			}
 			metadata: {
 				owner:       "analytics"
 				primary_key: "sale_id"
