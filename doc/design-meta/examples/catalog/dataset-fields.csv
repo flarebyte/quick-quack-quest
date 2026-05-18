@@ -13,4 +13,4 @@ events_stream,event_id,VARCHAR,false,Unique event identifier,E-9001
 events_stream,event_ts,TIMESTAMP,false,Event timestamp in UTC,2026-01-01T11:30:00Z
 events_stream,event_name,VARCHAR,false,Event name,page_view
 events_stream,customer_id,VARCHAR,true,Associated customer id,C-001
-events_stream,metadata_json,JSON,true,Arbitrary JSON payload,"{\"page\":\"/home\"}"
+events_stream,metadata_json,JSON,true,Arbitrary JSON payload,"{""page"":""/home""}"

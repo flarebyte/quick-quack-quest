@@ -1,6 +1,6 @@
 package designmeta
 
-cliSpec: {
+cliSpec: #CliSpec & {
 	datasets: [
 		{
 			id:          "sales_daily"

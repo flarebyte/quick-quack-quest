@@ -1,0 +1,23 @@
+[
+  {
+    "event_id": "E-9001",
+    "event_ts": "2026-01-01T11:30:00Z",
+    "event_name": "page_view",
+    "customer_id": "C-001",
+    "metadata_json": {"page": "/home"}
+  },
+  {
+    "event_id": "E-9002",
+    "event_ts": "2026-01-01T11:31:00Z",
+    "event_name": "add_to_cart",
+    "customer_id": "C-001",
+    "metadata_json": {"sku": "P-CHAIR"}
+  },
+  {
+    "event_id": "E-9003",
+    "event_ts": "2026-01-02T09:10:00Z",
+    "event_name": "page_view",
+    "customer_id": "C-002",
+    "metadata_json": {"page": "/pricing"}
+  }
+]
