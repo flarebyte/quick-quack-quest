@@ -1,0 +1,2 @@
+sale_id,sale_date,customer_id,product_id,quantity,amount
+S-1001,2026-01-01,C-001,P-CHAIR,2,129.99

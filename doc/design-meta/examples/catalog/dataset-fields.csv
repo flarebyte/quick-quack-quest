@@ -1,0 +1,16 @@
+dataset_id,field_name,duckdb_type,nullable,description,example
+sales_daily,sale_id,VARCHAR,false,Unique sale identifier,S-1001
+sales_daily,sale_date,DATE,false,Date of sale event,2026-01-01
+sales_daily,customer_id,VARCHAR,false,Customer foreign key,C-001
+sales_daily,product_id,VARCHAR,false,Product identifier,P-CHAIR
+sales_daily,quantity,INTEGER,false,Quantity sold,2
+sales_daily,amount,DOUBLE,false,Sale amount in local currency,129.99
+customers_master,customer_id,VARCHAR,false,Unique customer identifier,C-001
+customers_master,email,VARCHAR,false,Primary email address,ada@example.com
+customers_master,country,VARCHAR,true,Country code,GB
+customers_master,signup_date,DATE,true,First signup date,2025-11-03
+events_stream,event_id,VARCHAR,false,Unique event identifier,E-9001
+events_stream,event_ts,TIMESTAMP,false,Event timestamp in UTC,2026-01-01T11:30:00Z
+events_stream,event_name,VARCHAR,false,Event name,page_view
+events_stream,customer_id,VARCHAR,true,Associated customer id,C-001
+events_stream,metadata_json,JSON,true,Arbitrary JSON payload,"{""page"":""/home""}"

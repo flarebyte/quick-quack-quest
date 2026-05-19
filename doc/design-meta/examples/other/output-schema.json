@@ -1,0 +1,13 @@
+{
+  "output_schema_version": "v1",
+  "common_fields": {
+    "status": "ok|error",
+    "command": "string",
+    "duration_ms": "integer"
+  },
+  "error_fields": {
+    "error_id": "stable machine-readable id",
+    "message": "human readable message"
+  },
+  "notes": "All JSON outputs should include output_schema_version for backward-compatible evolution."
+}

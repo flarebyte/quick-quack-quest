@@ -1,0 +1,16 @@
+feature_id,feature_name,description,priority
+F001,Dataset catalog in CUE,Declare dataset type paths metadata and schema fields in a single source of truth,high
+F002,Dataset structure validation,Validate declared schema against real files and detect missing or mismatched fields,high
+F003,Parameterized query catalog,Register reusable DuckDB SQL with named runtime parameters and dataset dependencies,high
+F004,Cobra CLI command groups,Expose validation and query operations through clear command hierarchy,high
+F005,Dry run query planning,Resolve datasets and parameters without executing SQL for safe inspection,medium
+F006,Machine readable command output,Support json or table output for CI and automation,medium
+F007,Random sample dataset validation,Optionally validate a random subset of rows for very large files while keeping full validation available,medium
+F008,Partitioned dataset support,Represent one dataset across many related files using prefix suffix and partition keys,high
+F009,DuckDB runtime configuration,Expose core DuckDB engine settings and extensions in CUE for deterministic CLI behavior across environments,high
+F010,Version command,Expose CLI version and build metadata for support and release traceability,medium
+F011,Streaming query output,Support chunked streaming output for large result sets and pipe-friendly formats like jsonl and csv,high
+F012,Query progress reporting,Expose optional progress indicators with sensible TTY defaults for long running queries,medium
+F013,Query guardrails,Provide max rows and timeout controls to prevent runaway queries on very large datasets,high
+F014,Compressed dataset support,Support compressed input datasets such as gzip with explicit or auto compression configuration,high
+F015,Dual validation engines,Allow dataset validation via DuckDB or via native parser pipeline selected globally or per dataset,high

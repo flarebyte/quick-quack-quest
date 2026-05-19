@@ -1,0 +1,4 @@
+sale_id,sale_date,customer_id,product_id,quantity,amount
+S-1001,2026-01-01,C-001,P-CHAIR,2,129.99
+S-1002,2026-01-02,C-002,P-DESK,1,249.00
+S-1003,2026-01-02,C-001,P-LAMP,3,59.70

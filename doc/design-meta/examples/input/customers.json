@@ -1,0 +1,14 @@
+[
+  {
+    "customer_id": "C-001",
+    "email": "ada@example.com",
+    "country": "GB",
+    "signup_date": "2025-11-03"
+  },
+  {
+    "customer_id": "C-002",
+    "email": "linus@example.com",
+    "country": "US",
+    "signup_date": "2025-12-19"
+  }
+]

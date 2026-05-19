@@ -1,0 +1,9 @@
+error_id,category,severity,trigger,message_template,recommended_action
+QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS,query-config,error,Query run starts with limit greater than max rows,limit {limit} cannot be greater than max_rows {max_rows},Lower --limit or increase --max-rows
+QQQ_DATASET_NOT_FOUND,dataset,error,Dataset id does not exist in config,dataset {dataset_id} is not declared in cliSpec.datasets,Use dataset list and check dataset id spelling
+QQQ_SCHEMA_FIELD_MISSING,dataset-schema,error,Expected field is absent in source data,missing required field {field_name} in dataset {dataset_id},Fix source data or update declared fields
+QQQ_SCHEMA_TYPE_MISMATCH,dataset-schema,error,Observed type differs from declared type,field {field_name} expected {expected_type} but got {observed_type},Align source type coercion or adjust declared type
+QQQ_PARTITION_DISCOVERY_EMPTY,partition,error,No files found for partitioned dataset,no files matched prefix {prefix} and suffix {suffix},Verify path prefix suffix and partition filters
+QQQ_NATIVE_CODEC_UNAVAILABLE,compression,error,Native engine selected but required codec missing,native validation requires codec for compression {compression},Install codec dependency or switch to duckdb engine
+QQQ_QUERY_TIMEOUT,query-runtime,error,Execution exceeded timeout,query timed out after {timeout_seconds} seconds,Increase timeout or optimize query
+QQQ_MAX_ROWS_EXCEEDED,query-runtime,error,Result emission exceeded max rows,result exceeded max_rows {max_rows},Reduce data scope with parameters or increase max rows

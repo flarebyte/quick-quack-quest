@@ -1,0 +1,17 @@
+format,compression,validation_engine,supported,notes
+csv,none,duckdb,yes,Primary and fastest path for large files
+csv,gzip,duckdb,yes,Uses DuckDB compressed reader path
+csv,zstd,duckdb,yes,Requires DuckDB zstd support in runtime
+json,none,duckdb,yes,For array style JSON files
+json,gzip,duckdb,yes,Supports compressed JSON reads
+ndjson,none,duckdb,yes,Line-delimited JSON supported
+ndjson,gzip,duckdb,yes,Recommended for compressed event streams
+parquet,none,duckdb,yes,Native columnar support
+parquet,gzip,duckdb,no,Parquet should rely on parquet-level compression not outer gzip
+csv,none,native,yes,Uses native parser pipeline
+csv,gzip,native,yes,Requires gzip codec library
+csv,zstd,native,yes,Requires zstd codec library
+json,none,native,yes,Uses native JSON parser
+json,gzip,native,yes,Requires gzip codec library
+ndjson,gzip,native,yes,Requires gzip codec library
+parquet,none,native,no,No native parquet parser planned in v1

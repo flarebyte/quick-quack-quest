@@ -1,0 +1,9 @@
+{
+  "query_id": "sales_by_country",
+  "status": "ok",
+  "rows_emitted": 2,
+  "streaming": true,
+  "duration_ms": 86,
+  "limit": 1000,
+  "max_rows": 1000000
+}

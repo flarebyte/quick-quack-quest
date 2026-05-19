@@ -1,0 +1,16 @@
+{
+  "dataset_id": "sales_daily",
+  "validation_engine": "duckdb",
+  "compression": "gzip",
+  "status": "ok",
+  "sample_rows": 1000,
+  "observed_columns": [
+    {"name": "sale_id", "duckdb_type": "VARCHAR", "nullable": false},
+    {"name": "sale_date", "duckdb_type": "DATE", "nullable": false},
+    {"name": "customer_id", "duckdb_type": "VARCHAR", "nullable": false},
+    {"name": "product_id", "duckdb_type": "VARCHAR", "nullable": false},
+    {"name": "quantity", "duckdb_type": "INTEGER", "nullable": false},
+    {"name": "amount", "duckdb_type": "DOUBLE", "nullable": false}
+  ],
+  "duration_ms": 138
+}

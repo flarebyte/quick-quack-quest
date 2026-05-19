@@ -1,0 +1,10 @@
+name: github/flarebyte/quick-quack-quest
+role: dev
+description: |-
+    Go CLI to validate datasets and run parameterized DuckDB queries from CUE configuration.
+notes: |-
+    Project for dev role
+tags:
+    org: flarebyte
+    source: github
+    version: 0.5.0
