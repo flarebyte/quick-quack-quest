@@ -30,6 +30,7 @@ cliSpec: #CliSpec & {
 			min_query_ms:       1500
 		}
 		limits: {
+			default_result_limit_rows: 10000
 			max_rows:        1000000
 			timeout_seconds: 600
 		}

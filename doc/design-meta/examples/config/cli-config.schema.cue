@@ -104,6 +104,7 @@ package designmeta
 		min_query_ms?:       int & >=0
 	}
 	limits?: {
+		default_result_limit_rows?: int & >0
 		max_rows?:        int & >0
 		timeout_seconds?: int & >0
 	}

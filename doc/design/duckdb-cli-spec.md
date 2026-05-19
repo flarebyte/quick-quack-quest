@@ -207,6 +207,7 @@ cliSpec: #CliSpec & {
 			min_query_ms:       1500
 		}
 		limits: {
+			default_result_limit_rows: 10000
 			max_rows:        1000000
 			timeout_seconds: 600
 		}
@@ -425,6 +426,7 @@ package designmeta
 		min_query_ms?:       int & >=0
 	}
 	limits?: {
+		default_result_limit_rows?: int & >0
 		max_rows?:        int & >0
 		timeout_seconds?: int & >0
 	}
@@ -440,6 +442,88 @@ package designmeta
 	query_execution?: #QueryExecutionConfig
 	datasets: [...#Dataset] & [_, ...]
 	queries:  [...#Query] & [_, ...]
+}
+```
+
+### 03 Query Run Semantics
+
+#### Query Run: Limit And Max Rows Semantics
+
+```markdown
+# Query run semantics
+
+For `query run`, `--limit` and `--max-rows` have different roles:
+
+- `--limit`: logical SQL result limit. The CLI applies it to the query shape (for example by wrapping with a final `LIMIT n` when no explicit final limit is present).
+- `--max-rows`: safety guardrail on emitted rows. If the command would emit more than this cap, execution stops with an error.
+
+Precedence and defaults:
+
+- Default `limit` comes from `cliSpec.query_execution.limits.default_result_limit_rows` when set.
+- Default `max-rows` comes from `cliSpec.query_execution.limits.max_rows` when set.
+- CLI flags override config defaults.
+- If both values are set and `limit > max-rows`, fail fast with a clear configuration error.
+
+Suggested error id:
+
+- `QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS`
+```
+
+## 04 Expected Outputs
+
+### 01 Query Outputs
+
+#### Output Example: Query Run Stream (JSONL)
+
+```markdown
+JSONL stream example (`query run --stream --format jsonl`):
+
+```json
+{"country":"GB","total_amount":189.69,"tx_count":2}
+{"country":"US","total_amount":249.0,"tx_count":1}
+```
+```
+
+#### Output Example: Query Run Summary
+
+```json
+{
+  "query_id": "sales_by_country",
+  "status": "ok",
+  "rows_emitted": 2,
+  "streaming": true,
+  "duration_ms": 86,
+  "limit": 1000,
+  "max_rows": 1000000
+}
+```
+
+### 02 Validation And Version Outputs
+
+#### Output Example: Dataset Validate
+
+```json
+{
+  "dataset_id": "sales_daily",
+  "validation_engine": "duckdb",
+  "compression": "gzip",
+  "status": "ok",
+  "files_scanned": 31,
+  "rows_checked": 50000,
+  "schema_mismatches": 0,
+  "duration_ms": 412
+}
+```
+
+#### Output Example: Version Command
+
+```json
+{
+  "name": "quick-quack-quest",
+  "version": "0.1.0",
+  "commit": "abc1234",
+  "built_at": "2026-05-19T09:00:00Z",
+  "go_version": "go1.24.3"
 }
 ```
 
