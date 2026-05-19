@@ -80,6 +80,32 @@ notes: [
 		labels:   ["query", "semantics", "limits"]
 	},
 	{
+		name:      "other.error.catalog"
+		title:     "Error Catalog"
+		filepath:  "examples/other/error-catalog.csv"
+		arguments: ["format-csv=table"]
+		labels:    ["error", "catalog", "csv"]
+	},
+	{
+		name:     "other.config.precedence"
+		title:    "Configuration Precedence"
+		filepath: "examples/other/config-precedence.md"
+		labels:   ["config", "precedence"]
+	},
+	{
+		name:      "other.compatibility.matrix"
+		title:     "Compatibility Matrix"
+		filepath:  "examples/other/compatibility-matrix.csv"
+		arguments: ["format-csv=table"]
+		labels:    ["compatibility", "matrix", "csv"]
+	},
+	{
+		name:     "other.output.schema"
+		title:    "Output Schema Versioning"
+		filepath: "examples/other/output-schema.json"
+		labels:   ["output", "schema", "json"]
+	},
+	{
 		name:      "datasets.input.sales"
 		title:     "Input Example: Sales CSV"
 		filepath:  "examples/input/sales.csv"
@@ -117,6 +143,12 @@ notes: [
 		labels:   ["output", "dataset", "json", "example"]
 	},
 	{
+		name:     "outputs.dataset.inspect"
+		title:    "Output Example: Dataset Inspect"
+		filepath: "examples/output/dataset-inspect-sales_daily.json"
+		labels:   ["output", "dataset", "json", "example"]
+	},
+	{
 		name:     "outputs.version"
 		title:    "Output Example: Version Command"
 		filepath: "examples/output/version.json"
@@ -133,13 +165,21 @@ relationships: [
 	{from: "queries.catalog", to: "queries.params", label: "parameterized-by"},
 	{from: "queries.catalog", to: "queries.run.semantics", label: "governed-by"},
 	{from: "queries.catalog", to: "datasets.catalog", label: "depends-on"},
+	{from: "cli.commands", to: "other.config.precedence", label: "configured-by"},
+	{from: "cli.commands", to: "other.error.catalog", label: "returns-errors"},
+	{from: "datasets.catalog", to: "other.compatibility.matrix", label: "constrained-by"},
 	{from: "datasets.catalog", to: "datasets.input.sales", label: "example"},
 	{from: "datasets.catalog", to: "datasets.input.customers", label: "example"},
 	{from: "datasets.catalog", to: "datasets.input.events", label: "example"},
 	{from: "queries.run.semantics", to: "outputs.query.run.jsonl", label: "example"},
 	{from: "queries.run.semantics", to: "outputs.query.run.summary", label: "example"},
 	{from: "cli.commands", to: "outputs.dataset.validate", label: "example"},
+	{from: "cli.commands", to: "outputs.dataset.inspect", label: "example"},
 	{from: "cli.commands", to: "outputs.version", label: "example"},
+	{from: "outputs.query.run.summary", to: "other.output.schema", label: "follows"},
+	{from: "outputs.dataset.validate", to: "other.output.schema", label: "follows"},
+	{from: "outputs.dataset.inspect", to: "other.output.schema", label: "follows"},
+	{from: "outputs.version", to: "other.output.schema", label: "follows"},
 	{from: "cli.config.example", to: "cli.config.schema", label: "validated-by"},
 ]
 
@@ -187,7 +227,22 @@ reports: [{
 			notes: ["outputs.query.run.jsonl", "outputs.query.run.summary"]
 		}, {
 			title: "02 Validation And Version Outputs"
-			notes: ["outputs.dataset.validate", "outputs.version"]
+			notes: ["outputs.dataset.validate", "outputs.dataset.inspect", "outputs.version"]
+		}]
+	}, {
+		title: "05 Operational Details"
+		sections: [{
+			title: "01 Config Precedence"
+			notes: ["other.config.precedence"]
+		}, {
+			title: "02 Error Catalog"
+			notes: ["other.error.catalog"]
+		}, {
+			title: "03 Compatibility Matrix"
+			notes: ["other.compatibility.matrix"]
+		}, {
+			title: "04 Output Schema"
+			notes: ["other.output.schema"]
 		}]
 	}]
 }]

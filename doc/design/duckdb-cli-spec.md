@@ -500,6 +500,27 @@ JSONL stream example (`query run --stream --format jsonl`):
 
 ### 02 Validation And Version Outputs
 
+#### Output Example: Dataset Inspect
+
+```json
+{
+  "dataset_id": "sales_daily",
+  "validation_engine": "duckdb",
+  "compression": "gzip",
+  "status": "ok",
+  "sample_rows": 1000,
+  "observed_columns": [
+    {"name": "sale_id", "duckdb_type": "VARCHAR", "nullable": false},
+    {"name": "sale_date", "duckdb_type": "DATE", "nullable": false},
+    {"name": "customer_id", "duckdb_type": "VARCHAR", "nullable": false},
+    {"name": "product_id", "duckdb_type": "VARCHAR", "nullable": false},
+    {"name": "quantity", "duckdb_type": "INTEGER", "nullable": false},
+    {"name": "amount", "duckdb_type": "DOUBLE", "nullable": false}
+  ],
+  "duration_ms": 138
+}
+```
+
 #### Output Example: Dataset Validate
 
 ```json
@@ -524,6 +545,87 @@ JSONL stream example (`query run --stream --format jsonl`):
   "commit": "abc1234",
   "built_at": "2026-05-19T09:00:00Z",
   "go_version": "go1.24.3"
+}
+```
+
+## 05 Operational Details
+
+### 01 Config Precedence
+
+#### Configuration Precedence
+
+```markdown
+# Configuration precedence
+
+The CLI resolves effective values using this precedence order:
+
+1. Command-line flags (`--...`)
+2. Environment variables (`QQQ_...`)
+3. CUE config (`cliSpec`)
+4. Built-in defaults
+
+Examples:
+
+- `query run --max-rows=5000` overrides `cliSpec.query_execution.limits.max_rows`.
+- `QQQ_VALIDATION_ENGINE=native` overrides `cliSpec.validation.engine`.
+- If neither flag nor env is set, values come from CUE config when present.
+```
+
+### 02 Error Catalog
+
+#### Error Catalog
+
+| category | error_id | message_template | recommended_action | severity | trigger |
+| --- | --- | --- | --- | --- | --- |
+| query-config | QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS | limit {limit} cannot be greater than max_rows {max_rows} | Lower --limit or increase --max-rows | error | Query run starts with limit greater than max rows |
+| dataset | QQQ_DATASET_NOT_FOUND | dataset {dataset_id} is not declared in cliSpec.datasets | Use dataset list and check dataset id spelling | error | Dataset id does not exist in config |
+| dataset-schema | QQQ_SCHEMA_FIELD_MISSING | missing required field {field_name} in dataset {dataset_id} | Fix source data or update declared fields | error | Expected field is absent in source data |
+| dataset-schema | QQQ_SCHEMA_TYPE_MISMATCH | field {field_name} expected {expected_type} but got {observed_type} | Align source type coercion or adjust declared type | error | Observed type differs from declared type |
+| partition | QQQ_PARTITION_DISCOVERY_EMPTY | no files matched prefix {prefix} and suffix {suffix} | Verify path prefix suffix and partition filters | error | No files found for partitioned dataset |
+| compression | QQQ_NATIVE_CODEC_UNAVAILABLE | native validation requires codec for compression {compression} | Install codec dependency or switch to duckdb engine | error | Native engine selected but required codec missing |
+| query-runtime | QQQ_QUERY_TIMEOUT | query timed out after {timeout_seconds} seconds | Increase timeout or optimize query | error | Execution exceeded timeout |
+| query-runtime | QQQ_MAX_ROWS_EXCEEDED | result exceeded max_rows {max_rows} | Reduce data scope with parameters or increase max rows | error | Result emission exceeded max rows |
+
+### 03 Compatibility Matrix
+
+#### Compatibility Matrix
+
+| compression | format | notes | supported | validation_engine |
+| --- | --- | --- | --- | --- |
+| none | csv | Primary and fastest path for large files | yes | duckdb |
+| gzip | csv | Uses DuckDB compressed reader path | yes | duckdb |
+| zstd | csv | Requires DuckDB zstd support in runtime | yes | duckdb |
+| none | json | For array style JSON files | yes | duckdb |
+| gzip | json | Supports compressed JSON reads | yes | duckdb |
+| none | ndjson | Line-delimited JSON supported | yes | duckdb |
+| gzip | ndjson | Recommended for compressed event streams | yes | duckdb |
+| none | parquet | Native columnar support | yes | duckdb |
+| gzip | parquet | Parquet should rely on parquet-level compression not outer gzip | no | duckdb |
+| none | csv | Uses native parser pipeline | yes | native |
+| gzip | csv | Requires gzip codec library | yes | native |
+| zstd | csv | Requires zstd codec library | yes | native |
+| none | json | Uses native JSON parser | yes | native |
+| gzip | json | Requires gzip codec library | yes | native |
+| gzip | ndjson | Requires gzip codec library | yes | native |
+| none | parquet | No native parquet parser planned in v1 | no | native |
+
+### 04 Output Schema
+
+#### Output Schema Versioning
+
+```json
+{
+  "output_schema_version": "v1",
+  "common_fields": {
+    "status": "ok|error",
+    "command": "string",
+    "duration_ms": "integer"
+  },
+  "error_fields": {
+    "error_id": "stable machine-readable id",
+    "message": "human readable message"
+  },
+  "notes": "All JSON outputs should include output_schema_version for backward-compatible evolution."
 }
 ```
 
