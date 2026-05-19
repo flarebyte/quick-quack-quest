@@ -39,6 +39,18 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 | query-id | query explain <query-id> | C007 | --param key=value | query | --format text\|json | Show SQL and resolved datasets without execution |
 |  | config validate | C008 | --config | config | --format table\|json | Validate CUE config structure and references |
 
+### 03 Libraries
+
+#### Required Libraries
+
+| library | library_id | module | notes | scope | why_needed |
+| --- | --- | --- | --- | --- | --- |
+| Cobra | L001 | github.com/spf13/cobra | Industry standard Go CLI framework | cli | Build a structured CLI with commands flags and shell completion |
+| DuckDB Go Driver | L002 | github.com/duckdb/duckdb-go/v2 | Official DuckDB Go client maintained by DuckDB | query-runtime | Execute DuckDB SQL from Go and query local data files |
+| CUE | L003 | cuelang.org/go | Single source of truth for datasets queries and engine settings | config | Load and validate declarative configuration and schemas |
+| CSV helper | L004 | encoding/csv | Part of Go standard library | io | Parse command and dataset catalogs where needed |
+| Structured logging | L005 | log/slog | Part of Go standard library in modern Go | observability | Consistent machine readable logs for validation and query runs |
+
 ## 02 Dataset Model
 
 ### 01 Dataset Registry

@@ -27,6 +27,13 @@ notes: [
 		labels:    ["command", "csv", "cobra"]
 	},
 	{
+		name:      "cli.libraries"
+		title:     "Required Libraries"
+		filepath:  "examples/catalog/libraries.csv"
+		arguments: ["format-csv=table"]
+		labels:    ["library", "csv", "dependency"]
+	},
+	{
 		name:      "datasets.catalog"
 		title:     "Dataset Catalog"
 		filepath:  "examples/catalog/datasets.csv"
@@ -90,6 +97,7 @@ notes: [
 relationships: [
 	{from: "cli.overview", to: "cli.features", label: "details"},
 	{from: "cli.overview", to: "cli.commands", label: "defines"},
+	{from: "cli.overview", to: "cli.libraries", label: "depends-on"},
 	{from: "cli.commands", to: "datasets.catalog", label: "operates-on"},
 	{from: "datasets.catalog", to: "datasets.fields", label: "contains"},
 	{from: "queries.catalog", to: "queries.params", label: "parameterized-by"},
@@ -112,6 +120,9 @@ reports: [{
 		}, {
 			title: "02 Cobra Commands"
 			notes: ["cli.commands"]
+		}, {
+			title: "03 Libraries"
+			notes: ["cli.libraries"]
 		}]
 	}, {
 		title: "02 Dataset Model"
