@@ -26,6 +26,7 @@ package designmeta
 #DatasetFormat: "csv" | "json" | "ndjson" | "parquet"
 #DatasetLayout: "single_file" | "partitioned"
 #Compression: "auto" | "none" | "gzip" | "zstd"
+#ValidationEngine: "duckdb" | "native"
 
 #Field: {
 	name:        string & !=""
@@ -45,6 +46,7 @@ package designmeta
 	partition_keys?: [...string]
 	description: string & !=""
 	validation?: {
+		engine?: #ValidationEngine
 		// Optional: when set, validate this random sample size instead of full scan.
 		random_sample_rows?: int & >0
 	}
@@ -108,6 +110,7 @@ package designmeta
 
 #CliSpec: {
 	validation?: {
+		engine?: #ValidationEngine
 		// Optional global default for large datasets; can be overridden per dataset.
 		random_sample_rows?: int & >0
 	}

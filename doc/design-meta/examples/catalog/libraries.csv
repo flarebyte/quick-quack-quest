@@ -4,3 +4,5 @@ L002,DuckDB Go Driver,github.com/duckdb/duckdb-go/v2,Execute DuckDB SQL from Go 
 L003,CUE,cuelang.org/go,Load and validate declarative configuration and schemas,config,Single source of truth for datasets queries and engine settings
 L004,CSV helper,encoding/csv,Parse command and dataset catalogs where needed,io,Part of Go standard library
 L005,Structured logging,log/slog,Consistent machine readable logs for validation and query runs,observability,Part of Go standard library in modern Go
+L006,Gzip codec,compress/gzip,Handle gzip streams when pre-processing files outside DuckDB,io,Required when validation-engine=native for gzip datasets
+L007,Zstd codec,github.com/klauspost/compress/zstd,Handle zstd streams when pre-processing files outside DuckDB,io-optional,Required when validation-engine=native and compression=zstd

@@ -2,6 +2,7 @@ package designmeta
 
 cliSpec: #CliSpec & {
 	validation: {
+		engine: "duckdb"
 		// Optional default sample size used by dataset validation on very large files.
 		random_sample_rows: 100000
 	}
@@ -45,6 +46,7 @@ cliSpec: #CliSpec & {
 			partition_keys: ["date"]
 			description: "Daily store product sales transactions"
 			validation: {
+				engine: "duckdb"
 				// Per-dataset override for faster validation loops.
 				random_sample_rows: 50000
 			}
@@ -86,6 +88,10 @@ cliSpec: #CliSpec & {
 			compression: "gzip"
 			path:        "doc/design-meta/examples/input/events.ndjson.gz"
 			description: "Application behavior events for funnel analysis"
+			validation: {
+				// Example override: force native validation pipeline for this dataset.
+				engine: "native"
+			}
 			metadata: {
 				owner:       "product"
 				primary_key: "event_id"

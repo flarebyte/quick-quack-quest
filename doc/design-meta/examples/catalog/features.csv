@@ -13,3 +13,4 @@ F011,Streaming query output,Support chunked streaming output for large result se
 F012,Query progress reporting,Expose optional progress indicators with sensible TTY defaults for long running queries,medium
 F013,Query guardrails,Provide max rows and timeout controls to prevent runaway queries on very large datasets,high
 F014,Compressed dataset support,Support compressed input datasets such as gzip with explicit or auto compression configuration,high
+F015,Dual validation engines,Allow dataset validation via DuckDB or via native parser pipeline selected globally or per dataset,high

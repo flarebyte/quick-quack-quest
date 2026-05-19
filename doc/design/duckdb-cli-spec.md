@@ -24,6 +24,7 @@ Spec for a Go+Cobra CLI to validate datasets and execute DuckDB queries from CUE
 | Expose optional progress indicators with sensible TTY defaults for long running queries | F012 | Query progress reporting | medium |
 | Provide max rows and timeout controls to prevent runaway queries on very large datasets | F013 | Query guardrails | high |
 | Support compressed input datasets such as gzip with explicit or auto compression configuration | F014 | Compressed dataset support | high |
+| Allow dataset validation via DuckDB or via native parser pipeline selected globally or per dataset | F015 | Dual validation engines | high |
 
 #### CLI Overview
 
@@ -36,9 +37,9 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 | arguments | command | command_id | flags | group | output | summary |
 | --- | --- | --- | --- | --- | --- | --- |
 |  | dataset list | C001 | --format | dataset | --format table\|json | List declared datasets and metadata |
-| dataset-id | dataset validate <dataset-id> | C002 | --config --strict --compression --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate one dataset file contract |
-|  | dataset validate-all | C003 | --config --fail-fast --compression --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate all declared datasets |
-| dataset-id | dataset inspect <dataset-id> | C004 | --sample-size --compression | dataset | --format table\|json | Print discovered columns and inferred types |
+| dataset-id | dataset validate <dataset-id> | C002 | --config --strict --validation-engine --compression --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate one dataset file contract |
+|  | dataset validate-all | C003 | --config --fail-fast --validation-engine --compression --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate all declared datasets |
+| dataset-id | dataset inspect <dataset-id> | C004 | --sample-size --validation-engine --compression | dataset | --format table\|json | Print discovered columns and inferred types |
 |  | query list | C005 | --format | query | --format table\|json | List registered parameterized queries |
 | query-id | query run <query-id> | C006 | --param key=value --limit --output --stream --progress --max-rows --timeout --chunk-size | query | --format table\|json\|jsonl\|csv | Execute one query with parameters |
 | query-id | query explain <query-id> | C007 | --param key=value | query | --format text\|json | Show SQL and resolved datasets without execution |
@@ -56,6 +57,8 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 | CUE | L003 | cuelang.org/go | Single source of truth for datasets queries and engine settings | config | Load and validate declarative configuration and schemas |
 | CSV helper | L004 | encoding/csv | Part of Go standard library | io | Parse command and dataset catalogs where needed |
 | Structured logging | L005 | log/slog | Part of Go standard library in modern Go | observability | Consistent machine readable logs for validation and query runs |
+| Gzip codec | L006 | compress/gzip | Required when validation-engine=native for gzip datasets | io | Handle gzip streams when pre-processing files outside DuckDB |
+| Zstd codec | L007 | https://github.com/klauspost/compress/tree/master/zstd | Required when validation-engine=native and compression=zstd | io-optional | Handle zstd streams when pre-processing files outside DuckDB |
 
 ## 02 Dataset Model
 
@@ -176,6 +179,7 @@ package designmeta
 
 cliSpec: #CliSpec & {
 	validation: {
+		engine: "duckdb"
 		// Optional default sample size used by dataset validation on very large files.
 		random_sample_rows: 100000
 	}
@@ -219,6 +223,7 @@ cliSpec: #CliSpec & {
 			partition_keys: ["date"]
 			description: "Daily store product sales transactions"
 			validation: {
+				engine: "duckdb"
 				// Per-dataset override for faster validation loops.
 				random_sample_rows: 50000
 			}
@@ -260,6 +265,10 @@ cliSpec: #CliSpec & {
 			compression: "gzip"
 			path:        "doc/design-meta/examples/input/events.ndjson.gz"
 			description: "Application behavior events for funnel analysis"
+			validation: {
+				// Example override: force native validation pipeline for this dataset.
+				engine: "native"
+			}
 			metadata: {
 				owner:       "product"
 				primary_key: "event_id"
@@ -335,6 +344,7 @@ package designmeta
 #DatasetFormat: "csv" | "json" | "ndjson" | "parquet"
 #DatasetLayout: "single_file" | "partitioned"
 #Compression: "auto" | "none" | "gzip" | "zstd"
+#ValidationEngine: "duckdb" | "native"
 
 #Field: {
 	name:        string & !=""
@@ -354,6 +364,7 @@ package designmeta
 	partition_keys?: [...string]
 	description: string & !=""
 	validation?: {
+		engine?: #ValidationEngine
 		// Optional: when set, validate this random sample size instead of full scan.
 		random_sample_rows?: int & >0
 	}
@@ -417,6 +428,7 @@ package designmeta
 
 #CliSpec: {
 	validation?: {
+		engine?: #ValidationEngine
 		// Optional global default for large datasets; can be overridden per dataset.
 		random_sample_rows?: int & >0
 	}
