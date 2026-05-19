@@ -2,6 +2,10 @@
 
 `quick-quack-quest` is a Go CLI (Cobra) to validate data files and run parameterized DuckDB queries from a CUE configuration.
 
+## Illustration
+
+![quick-quack-quest hero](doc/quick-quack-quest-hero.png)
+
 ## CLI perspective
 
 From a user perspective, the CLI lets you:
