@@ -8,3 +8,4 @@ F006,Machine readable command output,Support json or table output for CI and aut
 F007,Random sample dataset validation,Optionally validate a random subset of rows for very large files while keeping full validation available,medium
 F008,Partitioned dataset support,Represent one dataset across many related files using prefix suffix and partition keys,high
 F009,DuckDB runtime configuration,Expose core DuckDB engine settings and extensions in CUE for deterministic CLI behavior across environments,high
+F010,Version command,Expose CLI version and build metadata for support and release traceability,medium

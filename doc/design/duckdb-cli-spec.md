@@ -19,6 +19,7 @@ Spec for a Go+Cobra CLI to validate datasets and execute DuckDB queries from CUE
 | Optionally validate a random subset of rows for very large files while keeping full validation available | F007 | Random sample dataset validation | medium |
 | Represent one dataset across many related files using prefix suffix and partition keys | F008 | Partitioned dataset support | high |
 | Expose core DuckDB engine settings and extensions in CUE for deterministic CLI behavior across environments | F009 | DuckDB runtime configuration | high |
+| Expose CLI version and build metadata for support and release traceability | F010 | Version command | medium |
 
 #### CLI Overview
 
@@ -38,6 +39,7 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 | query-id | query run <query-id> | C006 | --param key=value --limit --output | query | --format table\|json\|csv | Execute one query with parameters |
 | query-id | query explain <query-id> | C007 | --param key=value | query | --format text\|json | Show SQL and resolved datasets without execution |
 |  | config validate | C008 | --config | config | --format table\|json | Validate CUE config structure and references |
+|  | version | C009 | --format | core | --format text\|json | Print CLI version and build metadata |
 
 ### 03 Libraries
 

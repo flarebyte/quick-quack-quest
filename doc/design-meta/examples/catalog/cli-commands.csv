@@ -7,3 +7,4 @@ C005,query,query list,List registered parameterized queries,,--format,--format t
 C006,query,query run <query-id>,Execute one query with parameters,query-id,--param key=value --limit --output,--format table|json|csv
 C007,query,query explain <query-id>,Show SQL and resolved datasets without execution,query-id,--param key=value,--format text|json
 C008,config,config validate,Validate CUE config structure and references,,--config,--format table|json
+C009,core,version,Print CLI version and build metadata,,--format,--format text|json
