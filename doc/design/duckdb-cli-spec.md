@@ -23,6 +23,7 @@ Spec for a Go+Cobra CLI to validate datasets and execute DuckDB queries from CUE
 | Support chunked streaming output for large result sets and pipe-friendly formats like jsonl and csv | F011 | Streaming query output | high |
 | Expose optional progress indicators with sensible TTY defaults for long running queries | F012 | Query progress reporting | medium |
 | Provide max rows and timeout controls to prevent runaway queries on very large datasets | F013 | Query guardrails | high |
+| Support compressed input datasets such as gzip with explicit or auto compression configuration | F014 | Compressed dataset support | high |
 
 #### CLI Overview
 
@@ -35,9 +36,9 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 | arguments | command | command_id | flags | group | output | summary |
 | --- | --- | --- | --- | --- | --- | --- |
 |  | dataset list | C001 | --format | dataset | --format table\|json | List declared datasets and metadata |
-| dataset-id | dataset validate <dataset-id> | C002 | --config --strict --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate one dataset file contract |
-|  | dataset validate-all | C003 | --config --fail-fast --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate all declared datasets |
-| dataset-id | dataset inspect <dataset-id> | C004 | --sample-size | dataset | --format table\|json | Print discovered columns and inferred types |
+| dataset-id | dataset validate <dataset-id> | C002 | --config --strict --compression --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate one dataset file contract |
+|  | dataset validate-all | C003 | --config --fail-fast --compression --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate all declared datasets |
+| dataset-id | dataset inspect <dataset-id> | C004 | --sample-size --compression | dataset | --format table\|json | Print discovered columns and inferred types |
 |  | query list | C005 | --format | query | --format table\|json | List registered parameterized queries |
 | query-id | query run <query-id> | C006 | --param key=value --limit --output --stream --progress --max-rows --timeout --chunk-size | query | --format table\|json\|jsonl\|csv | Execute one query with parameters |
 | query-id | query explain <query-id> | C007 | --param key=value | query | --format text\|json | Show SQL and resolved datasets without execution |
@@ -62,11 +63,11 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 
 #### Dataset Catalog
 
-| dataset_id | description | format | layout | name | owner | partition_keys | path | prefix | primary_key | suffix | tags |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| sales_daily | Daily store product sales transactions | csv | partitioned | Daily sales facts | analytics | date |  | doc/design-meta/examples/input/sales/date= | sale_id | .csv | sales;facts |
-| customers_master | Customer profile master records | json | single_file | Customer master | crm |  | doc/design-meta/examples/input/customers.json |  | customer_id |  | customers;dimension |
-| events_stream | Application behavior events for funnel analysis | ndjson | single_file | Application events | product |  | doc/design-meta/examples/input/events.ndjson |  | event_id |  | events;telemetry |
+| compression | dataset_id | description | format | layout | name | owner | partition_keys | path | prefix | primary_key | suffix | tags |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gzip | sales_daily | Daily store product sales transactions | csv | partitioned | Daily sales facts | analytics | date |  | doc/design-meta/examples/input/sales/date= | sale_id | .csv.gz | sales;facts |
+| none | customers_master | Customer profile master records | json | single_file | Customer master | crm |  | doc/design-meta/examples/input/customers.json |  | customer_id |  | customers;dimension |
+| gzip | events_stream | Application behavior events for funnel analysis | ndjson | single_file | Application events | product |  | doc/design-meta/examples/input/events.ndjson.gz |  | event_id |  | events;telemetry |
 
 #### Dataset Fields
 
@@ -212,8 +213,9 @@ cliSpec: #CliSpec & {
 			id:          "sales_daily"
 			format:      "csv"
 			layout:      "partitioned"
+			compression: "gzip"
 			prefix:      "doc/design-meta/examples/input/sales/date="
-			suffix:      ".csv"
+			suffix:      ".csv.gz"
 			partition_keys: ["date"]
 			description: "Daily store product sales transactions"
 			validation: {
@@ -237,6 +239,7 @@ cliSpec: #CliSpec & {
 			id:          "customers_master"
 			format:      "json"
 			layout:      "single_file"
+			compression: "none"
 			path:        "doc/design-meta/examples/input/customers.json"
 			description: "Customer profile master records"
 			metadata: {
@@ -254,7 +257,8 @@ cliSpec: #CliSpec & {
 			id:          "events_stream"
 			format:      "ndjson"
 			layout:      "single_file"
-			path:        "doc/design-meta/examples/input/events.ndjson"
+			compression: "gzip"
+			path:        "doc/design-meta/examples/input/events.ndjson.gz"
 			description: "Application behavior events for funnel analysis"
 			metadata: {
 				owner:       "product"
@@ -330,6 +334,7 @@ package designmeta
 
 #DatasetFormat: "csv" | "json" | "ndjson" | "parquet"
 #DatasetLayout: "single_file" | "partitioned"
+#Compression: "auto" | "none" | "gzip" | "zstd"
 
 #Field: {
 	name:        string & !=""
@@ -342,6 +347,7 @@ package designmeta
 	id:          string & !=""
 	format:      #DatasetFormat
 	layout:      #DatasetLayout
+	compression?: #Compression
 	path?:       string & !=""
 	prefix?:     string & !=""
 	suffix?:     string & !=""

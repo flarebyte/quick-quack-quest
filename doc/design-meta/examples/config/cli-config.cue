@@ -39,8 +39,9 @@ cliSpec: #CliSpec & {
 			id:          "sales_daily"
 			format:      "csv"
 			layout:      "partitioned"
+			compression: "gzip"
 			prefix:      "doc/design-meta/examples/input/sales/date="
-			suffix:      ".csv"
+			suffix:      ".csv.gz"
 			partition_keys: ["date"]
 			description: "Daily store product sales transactions"
 			validation: {
@@ -64,6 +65,7 @@ cliSpec: #CliSpec & {
 			id:          "customers_master"
 			format:      "json"
 			layout:      "single_file"
+			compression: "none"
 			path:        "doc/design-meta/examples/input/customers.json"
 			description: "Customer profile master records"
 			metadata: {
@@ -81,7 +83,8 @@ cliSpec: #CliSpec & {
 			id:          "events_stream"
 			format:      "ndjson"
 			layout:      "single_file"
-			path:        "doc/design-meta/examples/input/events.ndjson"
+			compression: "gzip"
+			path:        "doc/design-meta/examples/input/events.ndjson.gz"
 			description: "Application behavior events for funnel analysis"
 			metadata: {
 				owner:       "product"

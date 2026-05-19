@@ -25,6 +25,7 @@ package designmeta
 
 #DatasetFormat: "csv" | "json" | "ndjson" | "parquet"
 #DatasetLayout: "single_file" | "partitioned"
+#Compression: "auto" | "none" | "gzip" | "zstd"
 
 #Field: {
 	name:        string & !=""
@@ -37,6 +38,7 @@ package designmeta
 	id:          string & !=""
 	format:      #DatasetFormat
 	layout:      #DatasetLayout
+	compression?: #Compression
 	path?:       string & !=""
 	prefix?:     string & !=""
 	suffix?:     string & !=""
