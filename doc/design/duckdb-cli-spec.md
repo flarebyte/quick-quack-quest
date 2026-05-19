@@ -20,6 +20,9 @@ Spec for a Go+Cobra CLI to validate datasets and execute DuckDB queries from CUE
 | Represent one dataset across many related files using prefix suffix and partition keys | F008 | Partitioned dataset support | high |
 | Expose core DuckDB engine settings and extensions in CUE for deterministic CLI behavior across environments | F009 | DuckDB runtime configuration | high |
 | Expose CLI version and build metadata for support and release traceability | F010 | Version command | medium |
+| Support chunked streaming output for large result sets and pipe-friendly formats like jsonl and csv | F011 | Streaming query output | high |
+| Expose optional progress indicators with sensible TTY defaults for long running queries | F012 | Query progress reporting | medium |
+| Provide max rows and timeout controls to prevent runaway queries on very large datasets | F013 | Query guardrails | high |
 
 #### CLI Overview
 
@@ -36,7 +39,7 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 |  | dataset validate-all | C003 | --config --fail-fast --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate all declared datasets |
 | dataset-id | dataset inspect <dataset-id> | C004 | --sample-size | dataset | --format table\|json | Print discovered columns and inferred types |
 |  | query list | C005 | --format | query | --format table\|json | List registered parameterized queries |
-| query-id | query run <query-id> | C006 | --param key=value --limit --output | query | --format table\|json\|csv | Execute one query with parameters |
+| query-id | query run <query-id> | C006 | --param key=value --limit --output --stream --progress --max-rows --timeout --chunk-size | query | --format table\|json\|jsonl\|csv | Execute one query with parameters |
 | query-id | query explain <query-id> | C007 | --param key=value | query | --format text\|json | Show SQL and resolved datasets without execution |
 |  | config validate | C008 | --config | config | --format table\|json | Validate CUE config structure and references |
 |  | version | C009 | --format | core | --format text\|json | Print CLI version and build metadata |
@@ -185,6 +188,22 @@ cliSpec: #CliSpec & {
 		extensions: ["json", "parquet"]
 		settings: {
 			preserve_insertion_order: "false"
+		}
+	}
+	query_execution: {
+		streaming: {
+			default_enabled: true
+			chunk_size_rows: 10000
+			allowed_output_formats: ["jsonl", "csv", "json", "table"]
+		}
+		progress: {
+			enabled_by_default: false
+			tty_only:           true
+			min_query_ms:       1500
+		}
+		limits: {
+			max_rows:        1000000
+			timeout_seconds: 600
 		}
 	}
 
@@ -373,12 +392,30 @@ package designmeta
 	settings?: [string]: string
 }
 
+#QueryExecutionConfig: {
+	streaming?: {
+		default_enabled?: bool
+		chunk_size_rows?: int & >0
+		allowed_output_formats?: [...("jsonl" | "csv" | "json" | "table")]
+	}
+	progress?: {
+		enabled_by_default?: bool
+		tty_only?:           bool
+		min_query_ms?:       int & >=0
+	}
+	limits?: {
+		max_rows?:        int & >0
+		timeout_seconds?: int & >0
+	}
+}
+
 #CliSpec: {
 	validation?: {
 		// Optional global default for large datasets; can be overridden per dataset.
 		random_sample_rows?: int & >0
 	}
 	duckdb?: #DuckDBConfig
+	query_execution?: #QueryExecutionConfig
 	datasets: [...#Dataset] & [_, ...]
 	queries:  [...#Query] & [_, ...]
 }

@@ -17,6 +17,22 @@ cliSpec: #CliSpec & {
 			preserve_insertion_order: "false"
 		}
 	}
+	query_execution: {
+		streaming: {
+			default_enabled: true
+			chunk_size_rows: 10000
+			allowed_output_formats: ["jsonl", "csv", "json", "table"]
+		}
+		progress: {
+			enabled_by_default: false
+			tty_only:           true
+			min_query_ms:       1500
+		}
+		limits: {
+			max_rows:        1000000
+			timeout_seconds: 600
+		}
+	}
 
 	datasets: [
 		{

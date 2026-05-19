@@ -9,3 +9,6 @@ F007,Random sample dataset validation,Optionally validate a random subset of row
 F008,Partitioned dataset support,Represent one dataset across many related files using prefix suffix and partition keys,high
 F009,DuckDB runtime configuration,Expose core DuckDB engine settings and extensions in CUE for deterministic CLI behavior across environments,high
 F010,Version command,Expose CLI version and build metadata for support and release traceability,medium
+F011,Streaming query output,Support chunked streaming output for large result sets and pipe-friendly formats like jsonl and csv,high
+F012,Query progress reporting,Expose optional progress indicators with sensible TTY defaults for long running queries,medium
+F013,Query guardrails,Provide max rows and timeout controls to prevent runaway queries on very large datasets,high

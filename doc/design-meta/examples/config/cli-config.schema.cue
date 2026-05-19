@@ -87,12 +87,30 @@ package designmeta
 	settings?: [string]: string
 }
 
+#QueryExecutionConfig: {
+	streaming?: {
+		default_enabled?: bool
+		chunk_size_rows?: int & >0
+		allowed_output_formats?: [...("jsonl" | "csv" | "json" | "table")]
+	}
+	progress?: {
+		enabled_by_default?: bool
+		tty_only?:           bool
+		min_query_ms?:       int & >=0
+	}
+	limits?: {
+		max_rows?:        int & >0
+		timeout_seconds?: int & >0
+	}
+}
+
 #CliSpec: {
 	validation?: {
 		// Optional global default for large datasets; can be overridden per dataset.
 		random_sample_rows?: int & >0
 	}
 	duckdb?: #DuckDBConfig
+	query_execution?: #QueryExecutionConfig
 	datasets: [...#Dataset] & [_, ...]
 	queries:  [...#Query] & [_, ...]
 }
