@@ -7,3 +7,4 @@ F005,Dry run query planning,Resolve datasets and parameters without executing SQ
 F006,Machine readable command output,Support json or table output for CI and automation,medium
 F007,Random sample dataset validation,Optionally validate a random subset of rows for very large files while keeping full validation available,medium
 F008,Partitioned dataset support,Represent one dataset across many related files using prefix suffix and partition keys,high
+F009,DuckDB runtime configuration,Expose core DuckDB engine settings and extensions in CUE for deterministic CLI behavior across environments,high

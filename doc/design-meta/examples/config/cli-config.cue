@@ -5,6 +5,18 @@ cliSpec: #CliSpec & {
 		// Optional default sample size used by dataset validation on very large files.
 		random_sample_rows: 100000
 	}
+	duckdb: {
+		database_path:       "var/duckdb/quick-quack-quest.duckdb"
+		temp_directory:      "var/duckdb/tmp"
+		threads:             4
+		memory_limit:        "2GB"
+		access_mode:         "automatic"
+		enable_progress_bar: false
+		extensions: ["json", "parquet"]
+		settings: {
+			preserve_insertion_order: "false"
+		}
+	}
 
 	datasets: [
 		{

@@ -75,11 +75,24 @@ package designmeta
 	sql:               string & !=""
 }
 
+#DuckDBConfig: {
+	database_path?:      string & != ""
+	temp_directory?:     string & != ""
+	threads?:            int & >0
+	memory_limit?:       string & != ""
+	access_mode?:        "automatic" | "read_only" | "read_write"
+	enable_progress_bar?: bool
+	extensions?:         [...string]
+	// Optional passthrough for additional DuckDB settings.
+	settings?: [string]: string
+}
+
 #CliSpec: {
 	validation?: {
 		// Optional global default for large datasets; can be overridden per dataset.
 		random_sample_rows?: int & >0
 	}
+	duckdb?: #DuckDBConfig
 	datasets: [...#Dataset] & [_, ...]
 	queries:  [...#Query] & [_, ...]
 }

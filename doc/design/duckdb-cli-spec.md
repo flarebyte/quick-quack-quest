@@ -18,6 +18,7 @@ Spec for a Go+Cobra CLI to validate datasets and execute DuckDB queries from CUE
 | Support json or table output for CI and automation | F006 | Machine readable command output | medium |
 | Optionally validate a random subset of rows for very large files while keeping full validation available | F007 | Random sample dataset validation | medium |
 | Represent one dataset across many related files using prefix suffix and partition keys | F008 | Partitioned dataset support | high |
+| Expose core DuckDB engine settings and extensions in CUE for deterministic CLI behavior across environments | F009 | DuckDB runtime configuration | high |
 
 #### CLI Overview
 
@@ -159,6 +160,18 @@ cliSpec: #CliSpec & {
 	validation: {
 		// Optional default sample size used by dataset validation on very large files.
 		random_sample_rows: 100000
+	}
+	duckdb: {
+		database_path:       "var/duckdb/quick-quack-quest.duckdb"
+		temp_directory:      "var/duckdb/tmp"
+		threads:             4
+		memory_limit:        "2GB"
+		access_mode:         "automatic"
+		enable_progress_bar: false
+		extensions: ["json", "parquet"]
+		settings: {
+			preserve_insertion_order: "false"
+		}
 	}
 
 	datasets: [
@@ -334,11 +347,24 @@ package designmeta
 	sql:               string & !=""
 }
 
+#DuckDBConfig: {
+	database_path?:      string & != ""
+	temp_directory?:     string & != ""
+	threads?:            int & >0
+	memory_limit?:       string & != ""
+	access_mode?:        "automatic" | "read_only" | "read_write"
+	enable_progress_bar?: bool
+	extensions?:         [...string]
+	// Optional passthrough for additional DuckDB settings.
+	settings?: [string]: string
+}
+
 #CliSpec: {
 	validation?: {
 		// Optional global default for large datasets; can be overridden per dataset.
 		random_sample_rows?: int & >0
 	}
+	duckdb?: #DuckDBConfig
 	datasets: [...#Dataset] & [_, ...]
 	queries:  [...#Query] & [_, ...]
 }
