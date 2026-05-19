@@ -18,11 +18,13 @@ check-tools: ## Report required tool availability.
 	@printf "flyb=%s\n" "$$(command -v $(FLYB) >/dev/null 2>&1 && echo true || echo false)"
 	@printf "gh=%s\n" "$$(command -v $(GH) >/dev/null 2>&1 && echo true || echo false)"
 	@printf "go=%s\n" "$$(command -v go >/dev/null 2>&1 && echo true || echo false)"
+	@printf "bun=%s\n" "$$(command -v bun >/dev/null 2>&1 && echo true || echo false)"
 
 install-tools-help: ## Show how to install required tools.
 	@echo "flyb: https://github.com/flarebyte/baldrick-flying-buttress"
 	@echo "gh: https://cli.github.com/"
 	@echo "go: https://go.dev/doc/install"
+	@echo "bun: https://bun.sh/docs/installation"
 
 format: doc-design ## Refresh generated design docs.
 
@@ -30,8 +32,8 @@ lint: config-validate doc-validate ## Run configured lint checks.
 
 test: doc-validate ## Run default automated checks.
 
-e2e: ## No end-to-end suite is defined yet.
-	@echo "e2e=not_configured"
+e2e: ## Run TypeScript end-to-end tests with Bun.
+	bun test e2e
 
 build: build-go ## Build distributable artifacts via gh flarebyte.
 
