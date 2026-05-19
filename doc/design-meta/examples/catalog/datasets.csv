@@ -1,4 +1,4 @@
-dataset_id,name,format,layout,compression,path,prefix,suffix,partition_keys,description,primary_key,owner,tags
-sales_daily,Daily sales facts,csv,partitioned,gzip,,doc/design-meta/examples/input/sales/date=,.csv.gz,date,Daily store product sales transactions,sale_id,analytics,"sales;facts"
-customers_master,Customer master,json,single_file,none,doc/design-meta/examples/input/customers.json,,,,Customer profile master records,customer_id,crm,"customers;dimension"
-events_stream,Application events,ndjson,single_file,gzip,doc/design-meta/examples/input/events.ndjson.gz,,,,Application behavior events for funnel analysis,event_id,product,"events;telemetry"
+dataset_id,name,format,layout,compression,path,prefix,suffix,partition_keys,description,homepage_url,primary_key,owner,tags
+sales_daily,Daily sales facts,csv,partitioned,gzip,,doc/design-meta/examples/input/sales/date=,.csv.gz,date,Daily store product sales transactions,https://data.example.com/catalog/sales_daily,sale_id,analytics,"sales;facts"
+customers_master,Customer master,json,single_file,none,doc/design-meta/examples/input/customers.json,,,,Customer profile master records,https://data.example.com/catalog/customers_master,customer_id,crm,"customers;dimension"
+events_stream,Application events,ndjson,single_file,gzip,doc/design-meta/examples/input/events.ndjson.gz,,,,Application behavior events for funnel analysis,https://data.example.com/catalog/events_stream,event_id,product,"events;telemetry"

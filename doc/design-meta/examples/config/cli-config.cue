@@ -45,6 +45,7 @@ cliSpec: #CliSpec & {
 			suffix:      ".csv.gz"
 			partition_keys: ["date"]
 			description: "Daily store product sales transactions"
+			homepage_url: "https://data.example.com/catalog/sales_daily"
 			validation: {
 				engine: "duckdb"
 				// Per-dataset override for faster validation loops.
@@ -70,6 +71,7 @@ cliSpec: #CliSpec & {
 			compression: "none"
 			path:        "doc/design-meta/examples/input/customers.json"
 			description: "Customer profile master records"
+			homepage_url: "https://data.example.com/catalog/customers_master"
 			metadata: {
 				owner:       "crm"
 				primary_key: "customer_id"
@@ -88,6 +90,7 @@ cliSpec: #CliSpec & {
 			compression: "gzip"
 			path:        "doc/design-meta/examples/input/events.ndjson.gz"
 			description: "Application behavior events for funnel analysis"
+			homepage_url: "https://data.example.com/catalog/events_stream"
 			validation: {
 				// Example override: force native validation pipeline for this dataset.
 				engine: "native"

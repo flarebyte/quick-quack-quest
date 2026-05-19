@@ -45,6 +45,7 @@ package designmeta
 	suffix?:     string & !=""
 	partition_keys?: [...string]
 	description: string & !=""
+	homepage_url?: string & != ""
 	validation?: {
 		engine?: #ValidationEngine
 		// Optional: when set, validate this random sample size instead of full scan.

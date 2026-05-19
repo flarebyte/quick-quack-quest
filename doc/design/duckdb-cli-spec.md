@@ -58,7 +58,7 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 | CSV helper | L004 | encoding/csv | Part of Go standard library | io | Parse command and dataset catalogs where needed |
 | Structured logging | L005 | log/slog | Part of Go standard library in modern Go | observability | Consistent machine readable logs for validation and query runs |
 | Gzip codec | L006 | compress/gzip | Required when validation-engine=native for gzip datasets | io | Handle gzip streams when pre-processing files outside DuckDB |
-| Zstd codec | L007 | https://github.com/klauspost/compress/tree/master/zstd | Required when validation-engine=native and compression=zstd | io-optional | Handle zstd streams when pre-processing files outside DuckDB |
+| Zstd codec | L007 | github.com/klauspost/compress/zstd | Required when validation-engine=native and compression=zstd | io-optional | Handle zstd streams when pre-processing files outside DuckDB |
 
 ## 02 Dataset Model
 
@@ -66,11 +66,11 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 
 #### Dataset Catalog
 
-| compression | dataset_id | description | format | layout | name | owner | partition_keys | path | prefix | primary_key | suffix | tags |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| gzip | sales_daily | Daily store product sales transactions | csv | partitioned | Daily sales facts | analytics | date |  | doc/design-meta/examples/input/sales/date= | sale_id | .csv.gz | sales;facts |
-| none | customers_master | Customer profile master records | json | single_file | Customer master | crm |  | doc/design-meta/examples/input/customers.json |  | customer_id |  | customers;dimension |
-| gzip | events_stream | Application behavior events for funnel analysis | ndjson | single_file | Application events | product |  | doc/design-meta/examples/input/events.ndjson.gz |  | event_id |  | events;telemetry |
+| compression | dataset_id | description | format | homepage_url | layout | name | owner | partition_keys | path | prefix | primary_key | suffix | tags |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| gzip | sales_daily | Daily store product sales transactions | csv | https://data.example.com/catalog/sales_daily | partitioned | Daily sales facts | analytics | date |  | doc/design-meta/examples/input/sales/date= | sale_id | .csv.gz | sales;facts |
+| none | customers_master | Customer profile master records | json | https://data.example.com/catalog/customers_master | single_file | Customer master | crm |  | doc/design-meta/examples/input/customers.json |  | customer_id |  | customers;dimension |
+| gzip | events_stream | Application behavior events for funnel analysis | ndjson | https://data.example.com/catalog/events_stream | single_file | Application events | product |  | doc/design-meta/examples/input/events.ndjson.gz |  | event_id |  | events;telemetry |
 
 #### Dataset Fields
 
@@ -222,6 +222,7 @@ cliSpec: #CliSpec & {
 			suffix:      ".csv.gz"
 			partition_keys: ["date"]
 			description: "Daily store product sales transactions"
+			homepage_url: "https://data.example.com/catalog/sales_daily"
 			validation: {
 				engine: "duckdb"
 				// Per-dataset override for faster validation loops.
@@ -247,6 +248,7 @@ cliSpec: #CliSpec & {
 			compression: "none"
 			path:        "doc/design-meta/examples/input/customers.json"
 			description: "Customer profile master records"
+			homepage_url: "https://data.example.com/catalog/customers_master"
 			metadata: {
 				owner:       "crm"
 				primary_key: "customer_id"
@@ -265,6 +267,7 @@ cliSpec: #CliSpec & {
 			compression: "gzip"
 			path:        "doc/design-meta/examples/input/events.ndjson.gz"
 			description: "Application behavior events for funnel analysis"
+			homepage_url: "https://data.example.com/catalog/events_stream"
 			validation: {
 				// Example override: force native validation pipeline for this dataset.
 				engine: "native"
@@ -363,6 +366,7 @@ package designmeta
 	suffix?:     string & !=""
 	partition_keys?: [...string]
 	description: string & !=""
+	homepage_url?: string & != ""
 	validation?: {
 		engine?: #ValidationEngine
 		// Optional: when set, validate this random sample size instead of full scan.
