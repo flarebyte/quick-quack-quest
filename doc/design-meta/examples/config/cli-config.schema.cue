@@ -24,6 +24,7 @@ package designmeta
 	| "JSON"
 
 #DatasetFormat: "csv" | "json" | "ndjson" | "parquet"
+#DatasetLayout: "single_file" | "partitioned"
 
 #Field: {
 	name:        string & !=""
@@ -35,7 +36,11 @@ package designmeta
 #Dataset: {
 	id:          string & !=""
 	format:      #DatasetFormat
-	path:        string & !=""
+	layout:      #DatasetLayout
+	path?:       string & !=""
+	prefix?:     string & !=""
+	suffix?:     string & !=""
+	partition_keys?: [...string]
 	description: string & !=""
 	validation?: {
 		// Optional: when set, validate this random sample size instead of full scan.
@@ -46,6 +51,14 @@ package designmeta
 		primary_key: string & !=""
 	}
 	fields: [...#Field] & [_, ...]
+	if layout == "single_file" {
+		path: string & != ""
+	}
+	if layout == "partitioned" {
+		prefix: string & != ""
+		suffix: string & != ""
+		partition_keys: [...string] & [_, ...]
+	}
 }
 
 #QueryParameter: {

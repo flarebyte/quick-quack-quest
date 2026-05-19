@@ -6,3 +6,4 @@ F004,Cobra CLI command groups,Expose validation and query operations through cle
 F005,Dry run query planning,Resolve datasets and parameters without executing SQL for safe inspection,medium
 F006,Machine readable command output,Support json or table output for CI and automation,medium
 F007,Random sample dataset validation,Optionally validate a random subset of rows for very large files while keeping full validation available,medium
+F008,Partitioned dataset support,Represent one dataset across many related files using prefix suffix and partition keys,high

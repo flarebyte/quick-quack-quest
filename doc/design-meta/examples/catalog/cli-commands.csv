@@ -1,7 +1,7 @@
 command_id,group,command,summary,arguments,flags,output
 C001,dataset,dataset list,List declared datasets and metadata,,--format,--format table|json
-C002,dataset,dataset validate <dataset-id>,Validate one dataset file contract,dataset-id,--config --strict --random-sample-rows --sample-seed,--format table|json
-C003,dataset,dataset validate-all,Validate all declared datasets,,--config --fail-fast --random-sample-rows --sample-seed,--format table|json
+C002,dataset,dataset validate <dataset-id>,Validate one dataset file contract,dataset-id,--config --strict --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files,--format table|json
+C003,dataset,dataset validate-all,Validate all declared datasets,,--config --fail-fast --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files,--format table|json
 C004,dataset,dataset inspect <dataset-id>,Print discovered columns and inferred types,dataset-id,--sample-size,--format table|json
 C005,query,query list,List registered parameterized queries,,--format,--format table|json
 C006,query,query run <query-id>,Execute one query with parameters,query-id,--param key=value --limit --output,--format table|json|csv

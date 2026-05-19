@@ -17,6 +17,7 @@ Spec for a Go+Cobra CLI to validate datasets and execute DuckDB queries from CUE
 | Resolve datasets and parameters without executing SQL for safe inspection | F005 | Dry run query planning | medium |
 | Support json or table output for CI and automation | F006 | Machine readable command output | medium |
 | Optionally validate a random subset of rows for very large files while keeping full validation available | F007 | Random sample dataset validation | medium |
+| Represent one dataset across many related files using prefix suffix and partition keys | F008 | Partitioned dataset support | high |
 
 #### CLI Overview
 
@@ -29,8 +30,8 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 | arguments | command | command_id | flags | group | output | summary |
 | --- | --- | --- | --- | --- | --- | --- |
 |  | dataset list | C001 | --format | dataset | --format table\|json | List declared datasets and metadata |
-| dataset-id | dataset validate <dataset-id> | C002 | --config --strict --random-sample-rows --sample-seed | dataset | --format table\|json | Validate one dataset file contract |
-|  | dataset validate-all | C003 | --config --fail-fast --random-sample-rows --sample-seed | dataset | --format table\|json | Validate all declared datasets |
+| dataset-id | dataset validate <dataset-id> | C002 | --config --strict --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate one dataset file contract |
+|  | dataset validate-all | C003 | --config --fail-fast --random-sample-rows --sample-seed --partition-filter --max-files --random-sample-files | dataset | --format table\|json | Validate all declared datasets |
 | dataset-id | dataset inspect <dataset-id> | C004 | --sample-size | dataset | --format table\|json | Print discovered columns and inferred types |
 |  | query list | C005 | --format | query | --format table\|json | List registered parameterized queries |
 | query-id | query run <query-id> | C006 | --param key=value --limit --output | query | --format table\|json\|csv | Execute one query with parameters |
@@ -43,11 +44,11 @@ Go + Cobra CLI to validate datasets and execute parameterized DuckDB SQL queries
 
 #### Dataset Catalog
 
-| dataset_id | description | format | name | owner | path | primary_key | tags |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| sales_daily | Daily store product sales transactions | csv | Daily sales facts | analytics | doc/design-meta/examples/input/sales.csv | sale_id | sales;facts |
-| customers_master | Customer profile master records | json | Customer master | crm | doc/design-meta/examples/input/customers.json | customer_id | customers;dimension |
-| events_stream | Application behavior events for funnel analysis | ndjson | Application events | product | doc/design-meta/examples/input/events.ndjson | event_id | events;telemetry |
+| dataset_id | description | format | layout | name | owner | partition_keys | path | prefix | primary_key | suffix | tags |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| sales_daily | Daily store product sales transactions | csv | partitioned | Daily sales facts | analytics | date |  | doc/design-meta/examples/input/sales/date= | sale_id | .csv | sales;facts |
+| customers_master | Customer profile master records | json | single_file | Customer master | crm |  | doc/design-meta/examples/input/customers.json |  | customer_id |  | customers;dimension |
+| events_stream | Application behavior events for funnel analysis | ndjson | single_file | Application events | product |  | doc/design-meta/examples/input/events.ndjson |  | event_id |  | events;telemetry |
 
 #### Dataset Fields
 
@@ -164,7 +165,10 @@ cliSpec: #CliSpec & {
 		{
 			id:          "sales_daily"
 			format:      "csv"
-			path:        "doc/design-meta/examples/input/sales.csv"
+			layout:      "partitioned"
+			prefix:      "doc/design-meta/examples/input/sales/date="
+			suffix:      ".csv"
+			partition_keys: ["date"]
 			description: "Daily store product sales transactions"
 			validation: {
 				// Per-dataset override for faster validation loops.
@@ -186,6 +190,7 @@ cliSpec: #CliSpec & {
 		{
 			id:          "customers_master"
 			format:      "json"
+			layout:      "single_file"
 			path:        "doc/design-meta/examples/input/customers.json"
 			description: "Customer profile master records"
 			metadata: {
@@ -202,6 +207,7 @@ cliSpec: #CliSpec & {
 		{
 			id:          "events_stream"
 			format:      "ndjson"
+			layout:      "single_file"
 			path:        "doc/design-meta/examples/input/events.ndjson"
 			description: "Application behavior events for funnel analysis"
 			metadata: {
@@ -277,6 +283,7 @@ package designmeta
 	| "JSON"
 
 #DatasetFormat: "csv" | "json" | "ndjson" | "parquet"
+#DatasetLayout: "single_file" | "partitioned"
 
 #Field: {
 	name:        string & !=""
@@ -288,7 +295,11 @@ package designmeta
 #Dataset: {
 	id:          string & !=""
 	format:      #DatasetFormat
-	path:        string & !=""
+	layout:      #DatasetLayout
+	path?:       string & !=""
+	prefix?:     string & !=""
+	suffix?:     string & !=""
+	partition_keys?: [...string]
 	description: string & !=""
 	validation?: {
 		// Optional: when set, validate this random sample size instead of full scan.
@@ -299,6 +310,14 @@ package designmeta
 		primary_key: string & !=""
 	}
 	fields: [...#Field] & [_, ...]
+	if layout == "single_file" {
+		path: string & != ""
+	}
+	if layout == "partitioned" {
+		prefix: string & != ""
+		suffix: string & != ""
+		partition_keys: [...string] & [_, ...]
+	}
 }
 
 #QueryParameter: {
