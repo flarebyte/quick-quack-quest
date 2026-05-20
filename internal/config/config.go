@@ -38,8 +38,10 @@ type Spec struct {
 		Engine           string `json:"engine"`
 		RandomSampleRows int    `json:"random_sample_rows"`
 	} `json:"validation"`
-	Datasets []Dataset `json:"datasets"`
-	Queries  []Query   `json:"queries"`
+	DuckDB         DuckDBConfig         `json:"duckdb"`
+	QueryExecution QueryExecutionConfig `json:"query_execution"`
+	Datasets       []Dataset            `json:"datasets"`
+	Queries        []Query              `json:"queries"`
 }
 
 type Dataset struct {
@@ -70,6 +72,35 @@ type QueryParameter struct {
 	Type        string `json:"type"`
 	Required    bool   `json:"required"`
 	Description string `json:"description"`
+}
+
+type DuckDBConfig struct {
+	DatabasePath      string            `json:"database_path"`
+	TempDirectory     string            `json:"temp_directory"`
+	Threads           int               `json:"threads"`
+	MemoryLimit       string            `json:"memory_limit"`
+	AccessMode        string            `json:"access_mode"`
+	EnableProgressBar bool              `json:"enable_progress_bar"`
+	Extensions        []string          `json:"extensions"`
+	Settings          map[string]string `json:"settings"`
+}
+
+type QueryExecutionConfig struct {
+	Streaming struct {
+		DefaultEnabled      bool     `json:"default_enabled"`
+		ChunkSizeRows       int      `json:"chunk_size_rows"`
+		AllowedOutputFormat []string `json:"allowed_output_formats"`
+	} `json:"streaming"`
+	Progress struct {
+		EnabledByDefault bool `json:"enabled_by_default"`
+		TTYOnly          bool `json:"tty_only"`
+		MinQueryMs       int  `json:"min_query_ms"`
+	} `json:"progress"`
+	Limits struct {
+		DefaultResultLimitRows int `json:"default_result_limit_rows"`
+		MaxRows                int `json:"max_rows"`
+		TimeoutSeconds         int `json:"timeout_seconds"`
+	} `json:"limits"`
 }
 
 type DatasetValidation struct {

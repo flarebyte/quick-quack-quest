@@ -369,3 +369,65 @@ func TestQueryExplainInvalidParamFormat(t *testing.T) {
 		t.Fatalf("expected QQQ_QUERY_PARAM_INVALID, got %v", err)
 	}
 }
+
+func TestQueryRunJSONLSuccess(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	cmd.SetArgs([]string{
+		"query", "run", "sales_by_country",
+		"--format", "jsonl",
+		"--stream",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--param", "start_date=2026-01-01",
+		"--param", "end_date=2026-01-31",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v\nstdout=%s\nstderr=%s", err, out.String(), errOut.String())
+	}
+	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
+	if len(lines) == 0 {
+		t.Fatalf("expected non-empty jsonl output")
+	}
+	var row map[string]any
+	if err := json.Unmarshal([]byte(lines[0]), &row); err != nil {
+		t.Fatalf("invalid jsonl line: %v line=%s", err, lines[0])
+	}
+	if _, ok := row["country"]; !ok {
+		t.Fatalf("expected country key in row: %v", row)
+	}
+	if !strings.Contains(errOut.String(), "\"query_id\": \"sales_by_country\"") {
+		t.Fatalf("expected summary on stderr, got: %s", errOut.String())
+	}
+}
+
+func TestQueryRunLimitExceedsMaxRows(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"query", "run", "sales_by_country",
+		"--format", "json",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--param", "start_date=2026-01-01",
+		"--param", "end_date=2026-01-31",
+		"--limit", "5",
+		"--max-rows", "2",
+	})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS") {
+		t.Fatalf("expected QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS, got %v", err)
+	}
+}

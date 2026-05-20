@@ -1,15 +1,21 @@
 package cli
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"time"
 
+	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/flarebyte/quick-quack-quest/internal/config"
 	"github.com/flarebyte/quick-quack-quest/internal/validate"
 	"github.com/spf13/cobra"
@@ -101,6 +107,7 @@ func newQueryCommand() *cobra.Command {
 	}
 	cmd.AddCommand(newQueryListCommand())
 	cmd.AddCommand(newQueryExplainCommand())
+	cmd.AddCommand(newQueryRunCommand())
 	return cmd
 }
 
@@ -259,6 +266,350 @@ func newQueryExplainCommand() *cobra.Command {
 	cmd.Flags().StringVar(&format, "format", string(formatText), "Output format: text|json")
 	cmd.Flags().StringArrayVar(&params, "param", nil, "Optional parameter values in key=value format")
 	return cmd
+}
+
+func newQueryRunCommand() *cobra.Command {
+	configPath := "doc/design-meta/examples/config/cli-config.cue"
+	format := "json"
+	params := []string{}
+	stream := false
+	progress := false
+	limit := 0
+	maxRows := 0
+	timeout := 0
+	chunkSize := 0
+	cmd := &cobra.Command{
+		Use:   "run <query-id>",
+		Short: "Run one parameterized query",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			spec, err := config.LoadAndValidate(configPath)
+			if err != nil {
+				return renderConfigError(cmd, err)
+			}
+			q, ok := findQuery(spec, args[0])
+			if !ok {
+				return fmt.Errorf("QQQ_QUERY_NOT_FOUND: query %s is not declared", args[0])
+			}
+			paramMap, err := parseParams(params)
+			if err != nil {
+				return err
+			}
+			for _, p := range q.Parameters {
+				if p.Required && strings.TrimSpace(paramMap[p.Name]) == "" {
+					return fmt.Errorf("QQQ_QUERY_PARAM_REQUIRED_MISSING: missing required parameter %s", p.Name)
+				}
+			}
+			effLimit := limit
+			if effLimit <= 0 {
+				effLimit = spec.QueryExecution.Limits.DefaultResultLimitRows
+			}
+			effMaxRows := maxRows
+			if effMaxRows <= 0 {
+				effMaxRows = spec.QueryExecution.Limits.MaxRows
+			}
+			if effLimit > 0 && effMaxRows > 0 && effLimit > effMaxRows {
+				return fmt.Errorf("QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS: limit=%d max_rows=%d", effLimit, effMaxRows)
+			}
+			effTimeout := timeout
+			if effTimeout <= 0 {
+				effTimeout = spec.QueryExecution.Limits.TimeoutSeconds
+			}
+			effStream := stream
+			if !stream {
+				effStream = spec.QueryExecution.Streaming.DefaultEnabled
+			}
+			if chunkSize <= 0 {
+				chunkSize = spec.QueryExecution.Streaming.ChunkSizeRows
+			}
+			if progress && isTTY(os.Stderr.Fd()) {
+				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "running query_id=%s\n", q.ID)
+			}
+			start := time.Now()
+			execRes, err := runQuery(spec, q, paramMap, runOptions{
+				format:    format,
+				stream:    effStream,
+				limit:     effLimit,
+				maxRows:   effMaxRows,
+				timeout:   effTimeout,
+				chunkSize: chunkSize,
+				out:       cmd.OutOrStdout(),
+			})
+			if err != nil {
+				return err
+			}
+			summary := map[string]any{
+				"output_schema_version": "v1",
+				"query_id":              q.ID,
+				"status":                "ok",
+				"rows_emitted":          execRes.rowsEmitted,
+				"streaming":             effStream,
+				"duration_ms":           time.Since(start).Milliseconds(),
+				"limit":                 effLimit,
+				"max_rows":              effMaxRows,
+			}
+			if format == "json" || format == "table" || format == "text" {
+				_, _ = fmt.Fprintln(cmd.ErrOrStderr())
+				return writeJSON(cmd.ErrOrStderr(), summary)
+			}
+			return writeJSON(cmd.ErrOrStderr(), summary)
+		},
+	}
+	cmd.Flags().StringVar(&configPath, "config", configPath, "Path to CUE config file")
+	cmd.Flags().StringVar(&format, "format", "json", "Output format: table|json|jsonl|csv")
+	cmd.Flags().StringArrayVar(&params, "param", nil, "Parameter in key=value format")
+	cmd.Flags().BoolVar(&stream, "stream", false, "Stream output rows")
+	cmd.Flags().BoolVar(&progress, "progress", false, "Show query progress on stderr")
+	cmd.Flags().IntVar(&limit, "limit", 0, "Result row limit")
+	cmd.Flags().IntVar(&maxRows, "max-rows", 0, "Maximum rows allowed to emit")
+	cmd.Flags().IntVar(&timeout, "timeout", 0, "Timeout in seconds")
+	cmd.Flags().IntVar(&chunkSize, "chunk-size", 0, "Chunk size rows")
+	return cmd
+}
+
+type runOptions struct {
+	format    string
+	stream    bool
+	limit     int
+	maxRows   int
+	timeout   int
+	chunkSize int
+	out       io.Writer
+}
+
+type runResult struct {
+	rowsEmitted int
+}
+
+func runQuery(spec *config.Spec, q config.Query, params map[string]string, opts runOptions) (runResult, error) {
+	_ = spec
+	db, err := sql.Open("duckdb", "")
+	if err != nil {
+		return runResult{}, err
+	}
+	defer db.Close()
+
+	for _, dsID := range q.RequiredDatasets {
+		ds, ok := findDatasetByID(spec, dsID)
+		if !ok {
+			return runResult{}, fmt.Errorf("QQQ_DATASET_NOT_FOUND: dataset %s is not declared", dsID)
+		}
+		glob := ds.Path
+		if ds.Layout == "partitioned" {
+			glob = ds.Prefix + "*" + ds.Suffix
+		}
+		src := sourceExprForRun(ds.Format, filepath.ToSlash(glob))
+		stmt := fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT * FROM %s", ds.ID, src)
+		if _, err := db.Exec(stmt); err != nil {
+			return runResult{}, err
+		}
+	}
+
+	sqlText, err := bindQuery(q, params, opts.limit)
+	if err != nil {
+		return runResult{}, err
+	}
+	ctx := context.Background()
+	if opts.timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, time.Duration(opts.timeout)*time.Second)
+		defer cancel()
+	}
+	rows, err := db.QueryContext(ctx, sqlText)
+	if err != nil {
+		return runResult{}, err
+	}
+	defer rows.Close()
+
+	cols, err := rows.Columns()
+	if err != nil {
+		return runResult{}, err
+	}
+	switch opts.format {
+	case "jsonl":
+		return emitJSONL(rows, cols, opts.maxRows, opts.out)
+	case "csv":
+		return emitCSV(rows, cols, opts.maxRows, opts.out)
+	case "json":
+		return emitJSON(rows, cols, opts.maxRows, opts.out)
+	case "table", "text":
+		return emitTable(rows, cols, opts.maxRows, opts.out)
+	default:
+		return runResult{}, fmt.Errorf("unsupported format %q", opts.format)
+	}
+}
+
+func sourceExprForRun(format, path string) string {
+	escaped := strings.ReplaceAll(path, "'", "''")
+	switch format {
+	case "csv":
+		return fmt.Sprintf("read_csv_auto('%s')", escaped)
+	case "json":
+		return fmt.Sprintf("read_json_auto('%s')", escaped)
+	case "ndjson":
+		return fmt.Sprintf("read_json_auto('%s', format='newline_delimited')", escaped)
+	case "parquet":
+		return fmt.Sprintf("read_parquet('%s')", escaped)
+	default:
+		return fmt.Sprintf("read_csv_auto('%s')", escaped)
+	}
+}
+
+func bindQuery(q config.Query, params map[string]string, limit int) (string, error) {
+	sqlText := q.SQL
+	for _, p := range q.Parameters {
+		val, ok := params[p.Name]
+		if p.Required && (!ok || strings.TrimSpace(val) == "") {
+			return "", fmt.Errorf("QQQ_QUERY_PARAM_REQUIRED_MISSING: missing required parameter %s", p.Name)
+		}
+		if !ok {
+			continue
+		}
+		repl := quoteParam(p.Type, val)
+		sqlText = strings.ReplaceAll(sqlText, "$"+p.Name, repl)
+	}
+	if limit > 0 {
+		sqlText = fmt.Sprintf("SELECT * FROM (%s) AS qqq_q LIMIT %d", sqlText, limit)
+	}
+	return sqlText, nil
+}
+
+func quoteParam(typ, value string) string {
+	t := strings.ToUpper(strings.TrimSpace(typ))
+	if t == "INTEGER" || t == "DOUBLE" || t == "BIGINT" || t == "SMALLINT" {
+		return value
+	}
+	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
+}
+
+func findDatasetByID(spec *config.Spec, datasetID string) (config.Dataset, bool) {
+	for _, d := range spec.Datasets {
+		if d.ID == datasetID {
+			return d, true
+		}
+	}
+	return config.Dataset{}, false
+}
+
+func emitJSONL(rows *sql.Rows, cols []string, maxRows int, out io.Writer) (runResult, error) {
+	emitted := 0
+	for rows.Next() {
+		m, err := scanRowMap(rows, cols)
+		if err != nil {
+			return runResult{}, err
+		}
+		b, err := json.Marshal(m)
+		if err != nil {
+			return runResult{}, err
+		}
+		_, _ = fmt.Fprintln(out, string(b))
+		emitted++
+		if maxRows > 0 && emitted > maxRows {
+			return runResult{}, fmt.Errorf("QQQ_QUERY_MAX_ROWS_EXCEEDED: emitted=%d max_rows=%d", emitted, maxRows)
+		}
+	}
+	return runResult{rowsEmitted: emitted}, rows.Err()
+}
+
+func emitCSV(rows *sql.Rows, cols []string, maxRows int, out io.Writer) (runResult, error) {
+	_, _ = fmt.Fprintln(out, strings.Join(cols, ","))
+	emitted := 0
+	for rows.Next() {
+		m, err := scanRowMap(rows, cols)
+		if err != nil {
+			return runResult{}, err
+		}
+		values := make([]string, 0, len(cols))
+		for _, c := range cols {
+			values = append(values, fmt.Sprintf("%v", m[c]))
+		}
+		_, _ = fmt.Fprintln(out, strings.Join(values, ","))
+		emitted++
+		if maxRows > 0 && emitted > maxRows {
+			return runResult{}, fmt.Errorf("QQQ_QUERY_MAX_ROWS_EXCEEDED: emitted=%d max_rows=%d", emitted, maxRows)
+		}
+	}
+	return runResult{rowsEmitted: emitted}, rows.Err()
+}
+
+func emitJSON(rows *sql.Rows, cols []string, maxRows int, out io.Writer) (runResult, error) {
+	arr := make([]map[string]any, 0)
+	emitted := 0
+	for rows.Next() {
+		m, err := scanRowMap(rows, cols)
+		if err != nil {
+			return runResult{}, err
+		}
+		arr = append(arr, m)
+		emitted++
+		if maxRows > 0 && emitted > maxRows {
+			return runResult{}, fmt.Errorf("QQQ_QUERY_MAX_ROWS_EXCEEDED: emitted=%d max_rows=%d", emitted, maxRows)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return runResult{}, err
+	}
+	if err := writeJSON(out, arr); err != nil {
+		return runResult{}, err
+	}
+	return runResult{rowsEmitted: emitted}, nil
+}
+
+func emitTable(rows *sql.Rows, cols []string, maxRows int, out io.Writer) (runResult, error) {
+	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(tw, strings.Join(cols, "\t"))
+	emitted := 0
+	for rows.Next() {
+		m, err := scanRowMap(rows, cols)
+		if err != nil {
+			return runResult{}, err
+		}
+		line := make([]string, 0, len(cols))
+		for _, c := range cols {
+			line = append(line, fmt.Sprintf("%v", m[c]))
+		}
+		_, _ = fmt.Fprintln(tw, strings.Join(line, "\t"))
+		emitted++
+		if maxRows > 0 && emitted > maxRows {
+			return runResult{}, fmt.Errorf("QQQ_QUERY_MAX_ROWS_EXCEEDED: emitted=%d max_rows=%d", emitted, maxRows)
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return runResult{}, err
+	}
+	if err := tw.Flush(); err != nil {
+		return runResult{}, err
+	}
+	return runResult{rowsEmitted: emitted}, nil
+}
+
+func scanRowMap(rows *sql.Rows, cols []string) (map[string]any, error) {
+	vals := make([]any, len(cols))
+	ptrs := make([]any, len(cols))
+	for i := range vals {
+		ptrs[i] = &vals[i]
+	}
+	if err := rows.Scan(ptrs...); err != nil {
+		return nil, err
+	}
+	m := make(map[string]any, len(cols))
+	for i, c := range cols {
+		switch v := vals[i].(type) {
+		case []byte:
+			m[c] = string(v)
+		default:
+			m[c] = v
+		}
+	}
+	return m, nil
+}
+
+func isTTY(_ uintptr) bool {
+	fi, err := os.Stderr.Stat()
+	if err != nil {
+		return false
+	}
+	return (fi.Mode() & os.ModeCharDevice) != 0
 }
 
 func newDatasetValidateCommand() *cobra.Command {
