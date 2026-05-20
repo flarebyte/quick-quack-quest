@@ -255,3 +255,117 @@ func TestDatasetInspectNativeGzipJSONOutputSuccess(t *testing.T) {
 		t.Fatalf("expected gzip compression, got %v", got["compression"])
 	}
 }
+
+func TestQueryListJSONOutput(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"query", "list", "--format", "json", "--config", "../../doc/design-meta/examples/config/cli-config.cue"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	var rows []map[string]any
+	if err := json.Unmarshal(out.Bytes(), &rows); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
+	}
+	if len(rows) != 3 {
+		t.Fatalf("expected 3 queries, got %d", len(rows))
+	}
+	if rows[0]["query_id"] != "customer_360" {
+		t.Fatalf("expected sorted first query customer_360, got %v", rows[0]["query_id"])
+	}
+}
+
+func TestQueryExplainJSONOutput(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"query", "explain", "sales_by_country", "--format", "json", "--config", "../../doc/design-meta/examples/config/cli-config.cue"})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v\noutput=%s", err, out.String())
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
+	}
+	if got["query_id"] != "sales_by_country" {
+		t.Fatalf("expected sales_by_country, got %v", got["query_id"])
+	}
+	if got["output_schema_version"] != "v1" {
+		t.Fatalf("expected output schema version v1, got %v", got["output_schema_version"])
+	}
+}
+
+func TestQueryExplainUnknownQuery(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"query", "explain", "missing_query", "--format", "json", "--config", "../../doc/design-meta/examples/config/cli-config.cue"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "QQQ_QUERY_NOT_FOUND") {
+		t.Fatalf("expected QQQ_QUERY_NOT_FOUND, got %v", err)
+	}
+}
+
+func TestQueryExplainMissingRequiredParam(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"query", "explain", "sales_by_country",
+		"--format", "json",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--param", "start_date=2026-01-01",
+	})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "QQQ_QUERY_PARAM_REQUIRED_MISSING") {
+		t.Fatalf("expected QQQ_QUERY_PARAM_REQUIRED_MISSING, got %v", err)
+	}
+}
+
+func TestQueryExplainInvalidParamFormat(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"query", "explain", "sales_by_country",
+		"--format", "json",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--param", "badparam",
+	})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), "QQQ_QUERY_PARAM_INVALID") {
+		t.Fatalf("expected QQQ_QUERY_PARAM_INVALID, got %v", err)
+	}
+}

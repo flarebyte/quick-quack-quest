@@ -49,6 +49,7 @@ func NewRootCommand() *cobra.Command {
 	rootCmd.AddCommand(newVersionCommand())
 	rootCmd.AddCommand(newConfigCommand())
 	rootCmd.AddCommand(newDatasetCommand())
+	rootCmd.AddCommand(newQueryCommand())
 
 	return rootCmd
 }
@@ -93,6 +94,16 @@ func newDatasetCommand() *cobra.Command {
 	return cmd
 }
 
+func newQueryCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "query",
+		Short: "Query catalog operations",
+	}
+	cmd.AddCommand(newQueryListCommand())
+	cmd.AddCommand(newQueryExplainCommand())
+	return cmd
+}
+
 func newConfigValidateCommand() *cobra.Command {
 	format := string(formatText)
 	configPath := "doc/design-meta/examples/config/cli-config.cue"
@@ -133,6 +144,12 @@ type datasetListRow struct {
 	ValidationEngine string `json:"validation_engine"`
 }
 
+type queryListRow struct {
+	QueryID          string `json:"query_id"`
+	RequiredDatasets string `json:"required_datasets"`
+	ParameterCount   int    `json:"parameter_count"`
+}
+
 func newDatasetListCommand() *cobra.Command {
 	format := string(formatText)
 	configPath := "doc/design-meta/examples/config/cli-config.cue"
@@ -161,6 +178,86 @@ func newDatasetListCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&configPath, "config", configPath, "Path to CUE config file")
 	cmd.Flags().StringVar(&format, "format", string(formatText), "Output format: text|json")
+	return cmd
+}
+
+func newQueryListCommand() *cobra.Command {
+	format := string(formatText)
+	configPath := "doc/design-meta/examples/config/cli-config.cue"
+	cmd := &cobra.Command{
+		Use:   "list",
+		Short: "List declared queries",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			spec, err := config.LoadAndValidate(configPath)
+			if err != nil {
+				return renderConfigError(cmd, err)
+			}
+			rows := queryRows(spec)
+			switch outputFormat(format) {
+			case formatJSON:
+				return writeJSON(cmd.OutOrStdout(), rows)
+			case formatText:
+				return writeQueryTable(cmd.OutOrStdout(), rows)
+			default:
+				return fmt.Errorf("unsupported format %q", format)
+			}
+		},
+	}
+	cmd.Flags().StringVar(&configPath, "config", configPath, "Path to CUE config file")
+	cmd.Flags().StringVar(&format, "format", string(formatText), "Output format: text|json")
+	return cmd
+}
+
+func newQueryExplainCommand() *cobra.Command {
+	format := string(formatText)
+	configPath := "doc/design-meta/examples/config/cli-config.cue"
+	params := []string{}
+	cmd := &cobra.Command{
+		Use:   "explain <query-id>",
+		Short: "Explain one query definition",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			spec, err := config.LoadAndValidate(configPath)
+			if err != nil {
+				return renderConfigError(cmd, err)
+			}
+			q, ok := findQuery(spec, args[0])
+			if !ok {
+				return fmt.Errorf("QQQ_QUERY_NOT_FOUND: query %s is not declared", args[0])
+			}
+			paramMap, err := parseParams(params)
+			if err != nil {
+				return err
+			}
+			if len(paramMap) > 0 {
+				for _, p := range q.Parameters {
+					if p.Required && strings.TrimSpace(paramMap[p.Name]) == "" {
+						return fmt.Errorf("QQQ_QUERY_PARAM_REQUIRED_MISSING: missing required parameter %s", p.Name)
+					}
+				}
+			}
+			out := map[string]any{
+				"output_schema_version": "v1",
+				"query_id":              q.ID,
+				"required_datasets":     q.RequiredDatasets,
+				"parameters":            q.Parameters,
+				"sql":                   q.SQL,
+			}
+			switch outputFormat(format) {
+			case formatJSON:
+				return writeJSON(cmd.OutOrStdout(), out)
+			case formatText:
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "query=%s datasets=%s params=%d\n", q.ID, strings.Join(q.RequiredDatasets, ","), len(q.Parameters))
+				_, _ = fmt.Fprintln(cmd.OutOrStdout(), q.SQL)
+				return nil
+			default:
+				return fmt.Errorf("unsupported format %q", format)
+			}
+		},
+	}
+	cmd.Flags().StringVar(&configPath, "config", configPath, "Path to CUE config file")
+	cmd.Flags().StringVar(&format, "format", string(formatText), "Output format: text|json")
+	cmd.Flags().StringArrayVar(&params, "param", nil, "Optional parameter values in key=value format")
 	return cmd
 }
 
@@ -377,12 +474,57 @@ func datasetRows(spec *config.Spec) []datasetListRow {
 	return rows
 }
 
+func queryRows(spec *config.Spec) []queryListRow {
+	rows := make([]queryListRow, 0, len(spec.Queries))
+	for _, q := range spec.Queries {
+		rows = append(rows, queryListRow{
+			QueryID:          q.ID,
+			RequiredDatasets: strings.Join(q.RequiredDatasets, ","),
+			ParameterCount:   len(q.Parameters),
+		})
+	}
+	slices.SortFunc(rows, func(a, b queryListRow) int {
+		return strings.Compare(a.QueryID, b.QueryID)
+	})
+	return rows
+}
+
+func findQuery(spec *config.Spec, queryID string) (config.Query, bool) {
+	for _, q := range spec.Queries {
+		if q.ID == queryID {
+			return q, true
+		}
+	}
+	return config.Query{}, false
+}
+
+func parseParams(args []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, raw := range args {
+		k, v, ok := strings.Cut(raw, "=")
+		if !ok || strings.TrimSpace(k) == "" {
+			return nil, fmt.Errorf("QQQ_QUERY_PARAM_INVALID: expected key=value, got %q", raw)
+		}
+		out[strings.TrimSpace(k)] = strings.TrimSpace(v)
+	}
+	return out, nil
+}
+
 func writeDatasetTable(out io.Writer, rows []datasetListRow) error {
 	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	_, _ = fmt.Fprintln(tw, "DATASET_ID\tFORMAT\tLAYOUT\tCOMPRESSION\tPATH\tPREFIX\tSUFFIX\tPARTITION_KEYS\tHOMEPAGE_URL\tOWNER\tPRIMARY_KEY\tVALIDATION_ENGINE")
 	for _, r := range rows {
 		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			r.DatasetID, r.Format, r.Layout, r.Compression, r.Path, r.Prefix, r.Suffix, r.PartitionKeys, r.HomepageURL, r.Owner, r.PrimaryKey, r.ValidationEngine)
+	}
+	return tw.Flush()
+}
+
+func writeQueryTable(out io.Writer, rows []queryListRow) error {
+	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	_, _ = fmt.Fprintln(tw, "QUERY_ID\tREQUIRED_DATASETS\tPARAMETER_COUNT")
+	for _, r := range rows {
+		_, _ = fmt.Fprintf(tw, "%s\t%s\t%d\n", r.QueryID, r.RequiredDatasets, r.ParameterCount)
 	}
 	return tw.Flush()
 }

@@ -59,7 +59,17 @@ type Dataset struct {
 }
 
 type Query struct {
-	ID string `json:"id"`
+	ID               string           `json:"id"`
+	RequiredDatasets []string         `json:"required_datasets"`
+	Parameters       []QueryParameter `json:"parameters"`
+	SQL              string           `json:"sql"`
+}
+
+type QueryParameter struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Required    bool   `json:"required"`
+	Description string `json:"description"`
 }
 
 type DatasetValidation struct {
