@@ -89,6 +89,7 @@ func newDatasetCommand() *cobra.Command {
 	cmd.AddCommand(newDatasetListCommand())
 	cmd.AddCommand(newDatasetValidateCommand())
 	cmd.AddCommand(newDatasetValidateAllCommand())
+	cmd.AddCommand(newDatasetInspectCommand())
 	return cmd
 }
 
@@ -221,6 +222,56 @@ func newDatasetValidateAllCommand() *cobra.Command {
 	}
 	wireValidateFlags(cmd, &configPath, &format, &opts)
 	cmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop on first validation failure")
+	return cmd
+}
+
+func newDatasetInspectCommand() *cobra.Command {
+	format := string(formatText)
+	configPath := "doc/design-meta/examples/config/cli-config.cue"
+	sampleSize := 1000
+	opts := validate.Options{}
+	cmd := &cobra.Command{
+		Use:   "inspect <dataset-id>",
+		Short: "Inspect observed dataset schema",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			spec, err := config.LoadAndValidate(configPath)
+			if err != nil {
+				return renderConfigError(cmd, err)
+			}
+			result, err := validate.InspectDataset(spec, args[0], opts, sampleSize)
+			out := map[string]any{
+				"output_schema_version": "v1",
+				"dataset_id":            result.DatasetID,
+				"validation_engine":     result.ValidationEngine,
+				"compression":           result.Compression,
+				"status":                result.Status,
+				"sample_rows":           result.SampleRows,
+				"observed_columns":      result.ObservedColumns,
+				"duration_ms":           result.DurationMs,
+			}
+			if result.ErrorID != "" {
+				out["error_id"] = result.ErrorID
+			}
+			if result.Message != "" {
+				out["message"] = result.Message
+			}
+			switch outputFormat(format) {
+			case formatJSON:
+				if wErr := writeJSON(cmd.OutOrStdout(), out); wErr != nil {
+					return wErr
+				}
+			case formatText:
+				_, _ = fmt.Fprintf(cmd.OutOrStdout(), "dataset=%s status=%s columns=%d sample_rows=%d duration_ms=%d\n",
+					result.DatasetID, result.Status, len(result.ObservedColumns), result.SampleRows, result.DurationMs)
+			default:
+				return fmt.Errorf("unsupported format %q", format)
+			}
+			return err
+		},
+	}
+	wireValidateFlags(cmd, &configPath, &format, &opts)
+	cmd.Flags().IntVar(&sampleSize, "sample-size", sampleSize, "Number of rows to sample during inspection")
 	return cmd
 }
 

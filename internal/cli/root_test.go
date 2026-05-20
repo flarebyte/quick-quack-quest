@@ -154,7 +154,7 @@ func TestDatasetValidateUnsupportedEngine(t *testing.T) {
 	cmd.SetErr(&out)
 	cmd.SetArgs([]string{
 		"dataset", "validate", "customers_master",
-		"--validation-engine", "native",
+		"--validation-engine", "bogus",
 		"--format", "json",
 		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
 	})
@@ -165,5 +165,93 @@ func TestDatasetValidateUnsupportedEngine(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "QQQ_VALIDATION_ENGINE_UNSUPPORTED") {
 		t.Fatalf("expected QQQ_VALIDATION_ENGINE_UNSUPPORTED, got %v", err)
+	}
+}
+
+func TestDatasetValidateNativeJSONOutputSuccess(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"dataset", "validate", "customers_master",
+		"--validation-engine", "native",
+		"--format", "json",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v\noutput=%s", err, out.String())
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
+	}
+	if got["status"] != "ok" {
+		t.Fatalf("expected ok status, got %v", got["status"])
+	}
+}
+
+func TestDatasetInspectDuckDBJSONOutputSuccess(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"dataset", "inspect", "customers_master",
+		"--format", "json",
+		"--sample-size", "10",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v\noutput=%s", err, out.String())
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
+	}
+	if got["status"] != "ok" {
+		t.Fatalf("expected ok status, got %v", got["status"])
+	}
+	if got["output_schema_version"] != "v1" {
+		t.Fatalf("expected output_schema_version v1, got %v", got["output_schema_version"])
+	}
+}
+
+func TestDatasetInspectNativeGzipJSONOutputSuccess(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"dataset", "inspect", "events_stream",
+		"--validation-engine", "native",
+		"--format", "json",
+		"--sample-size", "5",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v\noutput=%s", err, out.String())
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
+	}
+	if got["status"] != "ok" {
+		t.Fatalf("expected ok status, got %v", got["status"])
+	}
+	if got["compression"] != "gzip" {
+		t.Fatalf("expected gzip compression, got %v", got["compression"])
 	}
 }

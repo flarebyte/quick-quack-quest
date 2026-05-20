@@ -4,23 +4,26 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/flarebyte/quick-quack-quest/internal/config"
 	_ "github.com/duckdb/duckdb-go/v2"
+	"github.com/flarebyte/quick-quack-quest/internal/config"
 )
 
 const (
-	ErrIDDatasetNotFound      = "QQQ_DATASET_NOT_FOUND"
-	ErrIDValidationEngine     = "QQQ_VALIDATION_ENGINE_UNSUPPORTED"
-	ErrIDPartitionEmpty       = "QQQ_PARTITION_DISCOVERY_EMPTY"
-	ErrIDSchemaFieldMissing   = "QQQ_SCHEMA_FIELD_MISSING"
-	ErrIDSchemaTypeMismatch   = "QQQ_SCHEMA_TYPE_MISMATCH"
-	ErrIDDatasetReadFailed    = "QQQ_DATASET_READ_FAILED"
-	ErrIDDatasetValidateFailed = "QQQ_DATASET_VALIDATE_FAILED"
+	ErrIDDatasetNotFound          = "QQQ_DATASET_NOT_FOUND"
+	ErrIDValidationEngine         = "QQQ_VALIDATION_ENGINE_UNSUPPORTED"
+	ErrIDPartitionEmpty           = "QQQ_PARTITION_DISCOVERY_EMPTY"
+	ErrIDSchemaFieldMissing       = "QQQ_SCHEMA_FIELD_MISSING"
+	ErrIDSchemaTypeMismatch       = "QQQ_SCHEMA_TYPE_MISMATCH"
+	ErrIDDatasetReadFailed        = "QQQ_DATASET_READ_FAILED"
+	ErrIDDatasetValidateFailed    = "QQQ_DATASET_VALIDATE_FAILED"
+	ErrIDNativeCodecUnavailable   = "QQQ_NATIVE_CODEC_UNAVAILABLE"
+	ErrIDCompatibilityUnsupported = "QQQ_COMPATIBILITY_UNSUPPORTED"
 )
 
 type Error struct {
@@ -39,12 +42,12 @@ func (e *Error) Error() string {
 func (e *Error) Unwrap() error { return e.Cause }
 
 type Options struct {
-	ValidationEngine string
-	Compression      string
-	RandomSampleRows int
-	SampleSeed       int64
-	PartitionFilter  string
-	MaxFiles         int
+	ValidationEngine  string
+	Compression       string
+	RandomSampleRows  int
+	SampleSeed        int64
+	PartitionFilter   string
+	MaxFiles          int
 	RandomSampleFiles int
 }
 
@@ -78,15 +81,31 @@ func ValidateDatasetDefinition(spec *config.Spec, d config.Dataset, opts Options
 		ValidationEngine: engine,
 		Compression:      compression,
 	}
-
-	if engine != "duckdb" {
+	if engine != "duckdb" && engine != "native" {
 		result.Status = "error"
 		result.ErrorID = ErrIDValidationEngine
-		result.Message = fmt.Sprintf("validation engine %s is not supported yet", engine)
+		result.Message = fmt.Sprintf("validation engine %s is not supported", engine)
 		result.DurationMs = time.Since(start).Milliseconds()
 		return result, &Error{ID: ErrIDValidationEngine, Message: result.Message}
 	}
+	if !supportsValidationCombo(engine, d.Format, compression) {
+		result.Status = "error"
+		result.ErrorID = ErrIDCompatibilityUnsupported
+		result.Message = fmt.Sprintf("validation is not supported for format=%s compression=%s engine=%s", d.Format, compression, engine)
+		result.DurationMs = time.Since(start).Milliseconds()
+		return result, &Error{ID: ErrIDCompatibilityUnsupported, Message: result.Message}
+	}
 
+	switch engine {
+	case "duckdb":
+		return validateWithDuckDB(spec, d, opts, result, start)
+	case "native":
+		return validateWithNative(spec, d, opts, result, start)
+	}
+	return result, nil
+}
+
+func validateWithDuckDB(spec *config.Spec, d config.Dataset, opts Options, result DatasetResult, start time.Time) (DatasetResult, error) {
 	files, err := discoverFiles(d, opts)
 	if err != nil {
 		result.Status = "error"
@@ -168,6 +187,9 @@ func findDataset(spec *config.Spec, datasetID string) (config.Dataset, bool) {
 func resolveEngine(spec *config.Spec, d config.Dataset, override string) string {
 	if override != "" {
 		return override
+	}
+	if env := strings.TrimSpace(os.Getenv("QQQ_VALIDATION_ENGINE")); env != "" {
+		return env
 	}
 	if d.Validation.Engine != "" {
 		return d.Validation.Engine
@@ -307,4 +329,29 @@ func normalizeType(t string) string {
 		return "DECIMAL"
 	}
 	return t
+}
+
+func supportsValidationCombo(engine, format, compression string) bool {
+	allowed := map[string]map[string]map[string]bool{
+		"duckdb": {
+			"csv":     {"none": true, "gzip": true, "zstd": true, "auto": true},
+			"json":    {"none": true, "gzip": true, "auto": true},
+			"ndjson":  {"none": true, "gzip": true, "auto": true},
+			"parquet": {"none": true, "auto": true},
+		},
+		"native": {
+			"csv":    {"none": true, "gzip": true, "zstd": true, "auto": true},
+			"json":   {"none": true, "gzip": true, "auto": true},
+			"ndjson": {"none": true, "gzip": true, "auto": true},
+		},
+	}
+	engineMap, ok := allowed[engine]
+	if !ok {
+		return false
+	}
+	formatMap, ok := engineMap[format]
+	if !ok {
+		return false
+	}
+	return formatMap[compression]
 }
