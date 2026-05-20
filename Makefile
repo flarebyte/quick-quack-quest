@@ -39,7 +39,7 @@ lint: config-validate doc-validate lint-go ## Run configured lint checks.
 test: test-go ## Run default automated checks.
 
 e2e: ## Run TypeScript end-to-end tests with Bun.
-	$(BUN) test e2e
+	$(BUN) run e2e
 
 build: build-go ## Build distributable artifacts via gh flarebyte.
 

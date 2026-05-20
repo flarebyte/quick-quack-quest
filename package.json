@@ -1,0 +1,9 @@
+{
+  "name": "quick-quack-quest-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "bun test e2e"
+  }
+}
+
