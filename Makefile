@@ -2,13 +2,19 @@
 
 FLYB := flyb
 GH := gh
+GO := go
+BUN := bun
 DOC_CONFIG := doc/design-meta
 GHF_CONFIG := .gh-flarebyte.cue
+GO_CACHE_DIR := $(CURDIR)/.gocache
+GO_MOD_CACHE_DIR := $(CURDIR)/.gomodcache
+GO_PACKAGES := ./...
+GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DIR)
 
 .PHONY: help check-tools install-tools-help \
 	format lint test e2e build release review complexity sec dup clean \
 	doc-validate doc-generate doc-design \
-	config-validate build-go test-go lint-go
+	config-validate build-go test-go lint-go test-unit test-race coverage
 
 ## Public developer targets
 help: ## Show available commands.
@@ -28,19 +34,19 @@ install-tools-help: ## Show how to install required tools.
 
 format: doc-design ## Refresh generated design docs.
 
-lint: config-validate doc-validate ## Run configured lint checks.
+lint: config-validate doc-validate lint-go ## Run configured lint checks.
 
-test: doc-validate ## Run default automated checks.
+test: test-go ## Run default automated checks.
 
 e2e: ## Run TypeScript end-to-end tests with Bun.
-	bun test e2e
+	$(BUN) test e2e
 
 build: build-go ## Build distributable artifacts via gh flarebyte.
 
 release: ## Build and publish a GitHub release via gh flarebyte.
 	$(GH) flarebyte release
 
-review: lint test ## Run standard review gate.
+review: format test lint e2e ## Run standard review gate.
 
 complexity: ## No complexity scan is defined yet.
 	@echo "complexity=not_configured"
@@ -52,7 +58,7 @@ dup: ## No duplication scan is defined yet.
 	@echo "dup=not_configured"
 
 clean: ## Remove generated build artifacts.
-	rm -rf build
+	rm -rf ./build ./.gocache ./.gomodcache
 
 ## Documentation targets
 doc-validate: ## Validate flyb design-meta config.
@@ -70,8 +76,22 @@ config-validate: ## Validate gh flarebyte config.
 build-go: ## Build project artifacts from gh flarebyte config.
 	$(GH) flarebyte build
 
-test-go: ## Run Go tests when go.mod exists.
-	@if [ -f go.mod ]; then go test ./...; else echo "go_tests=skipped (no go.mod)"; fi
+test-go: test-unit ## Run Go test targets.
 
-lint-go: ## Run Go vet when go.mod exists.
-	@if [ -f go.mod ]; then go vet ./...; else echo "go_vet=skipped (no go.mod)"; fi
+test-unit: ## Run Go tests.
+	@if [ -f go.mod ]; then $(GO_ENV) $(GO) test $(GO_PACKAGES); else echo "go_tests=skipped (no go.mod)"; fi
+
+test-race: ## Run Go tests with race detector.
+	@if [ -f go.mod ]; then $(GO_ENV) $(GO) test -race $(GO_PACKAGES); else echo "go_tests_race=skipped (no go.mod)"; fi
+
+coverage: ## Run Go tests with coverage summary.
+	@if [ -f go.mod ]; then \
+		mkdir -p $(CURDIR)/tmp; \
+		$(GO_ENV) $(GO) test -coverprofile=$(CURDIR)/tmp/coverage.out -covermode=count $(GO_PACKAGES); \
+		$(GO_ENV) $(GO) tool cover -func=$(CURDIR)/tmp/coverage.out; \
+	else \
+		echo "go_coverage=skipped (no go.mod)"; \
+	fi
+
+lint-go: ## Run Go vet.
+	@if [ -f go.mod ]; then $(GO_ENV) $(GO) vet $(GO_PACKAGES); else echo "go_vet=skipped (no go.mod)"; fi
