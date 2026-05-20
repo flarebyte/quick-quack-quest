@@ -2,13 +2,16 @@ package cli
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"slices"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/flarebyte/quick-quack-quest/internal/config"
+	"github.com/flarebyte/quick-quack-quest/internal/validate"
 	"github.com/spf13/cobra"
 )
 
@@ -84,6 +87,8 @@ func newDatasetCommand() *cobra.Command {
 		Short: "Dataset operations",
 	}
 	cmd.AddCommand(newDatasetListCommand())
+	cmd.AddCommand(newDatasetValidateCommand())
+	cmd.AddCommand(newDatasetValidateAllCommand())
 	return cmd
 }
 
@@ -156,6 +161,141 @@ func newDatasetListCommand() *cobra.Command {
 	cmd.Flags().StringVar(&configPath, "config", configPath, "Path to CUE config file")
 	cmd.Flags().StringVar(&format, "format", string(formatText), "Output format: text|json")
 	return cmd
+}
+
+func newDatasetValidateCommand() *cobra.Command {
+	format := string(formatText)
+	configPath := "doc/design-meta/examples/config/cli-config.cue"
+	opts := validate.Options{}
+	cmd := &cobra.Command{
+		Use:   "validate <dataset-id>",
+		Short: "Validate one dataset file contract",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			spec, err := config.LoadAndValidate(configPath)
+			if err != nil {
+				return renderConfigError(cmd, err)
+			}
+			result, err := validate.ValidateDataset(spec, args[0], opts)
+			if err != nil {
+				return renderValidateResult(cmd, format, result, err)
+			}
+			return renderValidateResult(cmd, format, result, nil)
+		},
+	}
+	wireValidateFlags(cmd, &configPath, &format, &opts)
+	cmd.Flags().Bool("strict", true, "Fail when schema mismatch is found")
+	return cmd
+}
+
+func newDatasetValidateAllCommand() *cobra.Command {
+	format := string(formatText)
+	configPath := "doc/design-meta/examples/config/cli-config.cue"
+	failFast := false
+	opts := validate.Options{}
+	cmd := &cobra.Command{
+		Use:   "validate-all",
+		Short: "Validate all declared datasets",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			spec, err := config.LoadAndValidate(configPath)
+			if err != nil {
+				return renderConfigError(cmd, err)
+			}
+			results := make([]validate.DatasetResult, 0, len(spec.Datasets))
+			for _, d := range spec.Datasets {
+				r, vErr := validate.ValidateDatasetDefinition(spec, d, opts)
+				results = append(results, r)
+				if vErr != nil && failFast {
+					return renderValidateAllResult(cmd, format, results, vErr)
+				}
+			}
+			var finalErr error
+			for _, r := range results {
+				if r.Status != "ok" {
+					finalErr = errors.New(r.ErrorID)
+					break
+				}
+			}
+			return renderValidateAllResult(cmd, format, results, finalErr)
+		},
+	}
+	wireValidateFlags(cmd, &configPath, &format, &opts)
+	cmd.Flags().BoolVar(&failFast, "fail-fast", false, "Stop on first validation failure")
+	return cmd
+}
+
+func wireValidateFlags(cmd *cobra.Command, configPath *string, format *string, opts *validate.Options) {
+	cmd.Flags().StringVar(configPath, "config", *configPath, "Path to CUE config file")
+	cmd.Flags().StringVar(format, "format", string(formatText), "Output format: text|json")
+	cmd.Flags().StringVar(&opts.ValidationEngine, "validation-engine", "", "Validation engine override: duckdb|native")
+	cmd.Flags().StringVar(&opts.Compression, "compression", "", "Compression override: auto|none|gzip|zstd")
+	cmd.Flags().IntVar(&opts.RandomSampleRows, "random-sample-rows", 0, "Sample row count for validation")
+	cmd.Flags().Int64Var(&opts.SampleSeed, "sample-seed", 0, "Deterministic seed for random sampling")
+	cmd.Flags().StringVar(&opts.PartitionFilter, "partition-filter", "", "Filter matched partition files")
+	cmd.Flags().IntVar(&opts.MaxFiles, "max-files", 0, "Cap number of files to validate")
+	cmd.Flags().IntVar(&opts.RandomSampleFiles, "random-sample-files", 0, "Randomly select N files from discovered set")
+}
+
+func renderConfigError(cmd *cobra.Command, err error) error {
+	if cErr, ok := err.(*config.ConfigError); ok {
+		_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", cErr.Error())
+		return fmt.Errorf("%s", cErr.ID)
+	}
+	_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%v\n", err)
+	return err
+}
+
+func renderValidateResult(cmd *cobra.Command, format string, result validate.DatasetResult, err error) error {
+	switch outputFormat(format) {
+	case formatJSON:
+		if wErr := writeJSON(cmd.OutOrStdout(), result); wErr != nil {
+			return wErr
+		}
+	case formatText:
+		msg := fmt.Sprintf(
+			"dataset=%s status=%s files_scanned=%d rows_checked=%d schema_mismatches=%d duration_ms=%d",
+			result.DatasetID, result.Status, result.FilesScanned, result.RowsChecked, result.SchemaMismatches, result.DurationMs,
+		)
+		if result.ErrorID != "" {
+			msg += " error_id=" + result.ErrorID
+		}
+		if result.Message != "" {
+			msg += " message=" + strconv.Quote(result.Message)
+		}
+		_, _ = fmt.Fprintln(cmd.OutOrStdout(), msg)
+	default:
+		return fmt.Errorf("unsupported format %q", format)
+	}
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func renderValidateAllResult(cmd *cobra.Command, format string, results []validate.DatasetResult, err error) error {
+	switch outputFormat(format) {
+	case formatJSON:
+		if wErr := writeJSON(cmd.OutOrStdout(), results); wErr != nil {
+			return wErr
+		}
+	case formatText:
+		for _, r := range results {
+			line := fmt.Sprintf(
+				"dataset=%s status=%s files_scanned=%d rows_checked=%d schema_mismatches=%d duration_ms=%d",
+				r.DatasetID, r.Status, r.FilesScanned, r.RowsChecked, r.SchemaMismatches, r.DurationMs,
+			)
+			if r.ErrorID != "" {
+				line += " error_id=" + r.ErrorID
+			}
+			if r.Message != "" {
+				line += " message=" + strconv.Quote(r.Message)
+			}
+			_, _ = fmt.Fprintln(cmd.OutOrStdout(), line)
+		}
+	default:
+		return fmt.Errorf("unsupported format %q", format)
+	}
+	return err
 }
 
 func datasetRows(spec *config.Spec) []datasetListRow {

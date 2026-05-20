@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"cuelang.org/go/cue"
@@ -54,6 +55,7 @@ type Dataset struct {
 	HomepageURL   string            `json:"homepage_url"`
 	Validation    DatasetValidation `json:"validation"`
 	Metadata      DatasetMetadata   `json:"metadata"`
+	Fields        []Field           `json:"fields"`
 }
 
 type Query struct {
@@ -68,6 +70,13 @@ type DatasetValidation struct {
 type DatasetMetadata struct {
 	Owner      string `json:"owner"`
 	PrimaryKey string `json:"primary_key"`
+}
+
+type Field struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Nullable    bool   `json:"nullable"`
+	Description string `json:"description"`
 }
 
 func LoadAndValidate(path string) (*Spec, error) {
@@ -101,6 +110,40 @@ func LoadAndValidate(path string) (*Spec, error) {
 	if err := cliSpec.Decode(&spec); err != nil {
 		return nil, &ConfigError{ID: ErrIDConfigDecode, Message: "decode cliSpec", Cause: err}
 	}
+	normalizeDatasetPaths(&spec, abs)
 
 	return &spec, nil
+}
+
+func normalizeDatasetPaths(spec *Spec, configPath string) {
+	base := findRepoRoot(filepath.Dir(configPath))
+	for i := range spec.Datasets {
+		if spec.Datasets[i].Path != "" {
+			spec.Datasets[i].Path = toAbsPath(base, spec.Datasets[i].Path)
+		}
+		if spec.Datasets[i].Prefix != "" {
+			spec.Datasets[i].Prefix = toAbsPath(base, spec.Datasets[i].Prefix)
+		}
+	}
+}
+
+func findRepoRoot(start string) string {
+	cur := start
+	for {
+		if _, err := os.Stat(filepath.Join(cur, "go.mod")); err == nil {
+			return cur
+		}
+		next := filepath.Dir(cur)
+		if next == cur {
+			return start
+		}
+		cur = next
+	}
+}
+
+func toAbsPath(base, p string) string {
+	if filepath.IsAbs(p) {
+		return p
+	}
+	return filepath.Join(base, p)
 }

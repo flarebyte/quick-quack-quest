@@ -93,3 +93,77 @@ func TestDatasetListTextOutput(t *testing.T) {
 		t.Fatalf("expected sales_daily in output, got: %s", s)
 	}
 }
+
+func TestDatasetValidateJSONOutputSuccess(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"dataset", "validate", "customers_master",
+		"--format", "json",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+	})
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v\noutput=%s", err, out.String())
+	}
+
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
+	}
+	if got["status"] != "ok" {
+		t.Fatalf("expected ok status, got %v", got["status"])
+	}
+	if got["dataset_id"] != "customers_master" {
+		t.Fatalf("dataset mismatch: %v", got["dataset_id"])
+	}
+}
+
+func TestDatasetValidateDatasetNotFound(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"dataset", "validate", "not_a_dataset",
+		"--format", "json",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+	})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error, got nil\noutput=%s", out.String())
+	}
+	if !strings.Contains(err.Error(), "QQQ_DATASET_NOT_FOUND") {
+		t.Fatalf("expected QQQ_DATASET_NOT_FOUND, got %v", err)
+	}
+}
+
+func TestDatasetValidateUnsupportedEngine(t *testing.T) {
+	t.Parallel()
+
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{
+		"dataset", "validate", "customers_master",
+		"--validation-engine", "native",
+		"--format", "json",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+	})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("expected error, got nil\noutput=%s", out.String())
+	}
+	if !strings.Contains(err.Error(), "QQQ_VALIDATION_ENGINE_UNSUPPORTED") {
+		t.Fatalf("expected QQQ_VALIDATION_ENGINE_UNSUPPORTED, got %v", err)
+	}
+}

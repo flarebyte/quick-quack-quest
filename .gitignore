@@ -34,3 +34,7 @@ go.work.sum
 scratch/
 temp/
 tmp/
+
+# Local Go caches
+.gocache/
+.gomodcache/
