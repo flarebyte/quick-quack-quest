@@ -42,15 +42,32 @@ type Spec struct {
 }
 
 type Dataset struct {
-	ID          string `json:"id"`
-	Format      string `json:"format"`
-	Layout      string `json:"layout"`
-	Compression string `json:"compression"`
-	Description string `json:"description"`
+	ID            string            `json:"id"`
+	Format        string            `json:"format"`
+	Layout        string            `json:"layout"`
+	Compression   string            `json:"compression"`
+	Path          string            `json:"path"`
+	Prefix        string            `json:"prefix"`
+	Suffix        string            `json:"suffix"`
+	PartitionKeys []string          `json:"partition_keys"`
+	Description   string            `json:"description"`
+	HomepageURL   string            `json:"homepage_url"`
+	Validation    DatasetValidation `json:"validation"`
+	Metadata      DatasetMetadata   `json:"metadata"`
 }
 
 type Query struct {
 	ID string `json:"id"`
+}
+
+type DatasetValidation struct {
+	Engine           string `json:"engine"`
+	RandomSampleRows int    `json:"random_sample_rows"`
+}
+
+type DatasetMetadata struct {
+	Owner      string `json:"owner"`
+	PrimaryKey string `json:"primary_key"`
 }
 
 func LoadAndValidate(path string) (*Spec, error) {
