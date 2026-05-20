@@ -118,6 +118,9 @@ func TestDatasetValidateJSONOutputSuccess(t *testing.T) {
 	if got["status"] != "ok" {
 		t.Fatalf("expected ok status, got %v", got["status"])
 	}
+	if got["output_schema_version"] != "v1" {
+		t.Fatalf("expected output_schema_version v1, got %v", got["output_schema_version"])
+	}
 	if got["dataset_id"] != "customers_master" {
 		t.Fatalf("dataset mismatch: %v", got["dataset_id"])
 	}
@@ -404,6 +407,9 @@ func TestQueryRunJSONLSuccess(t *testing.T) {
 	if !strings.Contains(errOut.String(), "\"query_id\": \"sales_by_country\"") {
 		t.Fatalf("expected summary on stderr, got: %s", errOut.String())
 	}
+	if !strings.Contains(errOut.String(), "\"output_schema_version\": \"v1\"") {
+		t.Fatalf("expected schema version in summary, got: %s", errOut.String())
+	}
 }
 
 func TestQueryRunLimitExceedsMaxRows(t *testing.T) {
@@ -429,5 +435,29 @@ func TestQueryRunLimitExceedsMaxRows(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS") {
 		t.Fatalf("expected QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS, got %v", err)
+	}
+}
+
+func TestQueryRunEnvPrecedenceForLimit(t *testing.T) {
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&errOut)
+	cmd.SetArgs([]string{
+		"query", "run", "sales_by_country",
+		"--format", "jsonl",
+		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--param", "start_date=2026-01-01",
+		"--param", "end_date=2026-01-31",
+	})
+	t.Setenv("QQQ_QUERY_LIMIT", "1")
+	t.Setenv("QQQ_MAX_ROWS", "10")
+
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	if !strings.Contains(errOut.String(), "\"limit\": 1") {
+		t.Fatalf("expected env limit in summary, got: %s", errOut.String())
 	}
 }

@@ -17,6 +17,7 @@ import (
 
 	_ "github.com/duckdb/duckdb-go/v2"
 	"github.com/flarebyte/quick-quack-quest/internal/config"
+	"github.com/flarebyte/quick-quack-quest/internal/contract"
 	"github.com/flarebyte/quick-quack-quest/internal/validate"
 	"github.com/spf13/cobra"
 )
@@ -71,6 +72,15 @@ func newVersionCommand() *cobra.Command {
 				Version: Version,
 				Commit:  Commit,
 				BuiltAt: BuiltAt,
+			}
+			if outputFormat(format) == formatJSON {
+				return writeJSON(cmd.OutOrStdout(), map[string]any{
+					"output_schema_version": "v1",
+					"name":                  payload.Name,
+					"version":               payload.Version,
+					"commit":                payload.Commit,
+					"built_at":              payload.BuiltAt,
+				})
 			}
 			return writeOutput(cmd.OutOrStdout(), format, payload, fmt.Sprintf("%s %s (%s)", payload.Name, payload.Version, payload.Commit))
 		},
@@ -230,7 +240,7 @@ func newQueryExplainCommand() *cobra.Command {
 			}
 			q, ok := findQuery(spec, args[0])
 			if !ok {
-				return fmt.Errorf("QQQ_QUERY_NOT_FOUND: query %s is not declared", args[0])
+				return fmt.Errorf("%s: query %s is not declared", contract.ErrIDQueryNotFound, args[0])
 			}
 			paramMap, err := parseParams(params)
 			if err != nil {
@@ -239,7 +249,7 @@ func newQueryExplainCommand() *cobra.Command {
 			if len(paramMap) > 0 {
 				for _, p := range q.Parameters {
 					if p.Required && strings.TrimSpace(paramMap[p.Name]) == "" {
-						return fmt.Errorf("QQQ_QUERY_PARAM_REQUIRED_MISSING: missing required parameter %s", p.Name)
+						return fmt.Errorf("%s: missing required parameter %s", contract.ErrIDQueryParamRequired, p.Name)
 					}
 				}
 			}
@@ -289,7 +299,7 @@ func newQueryRunCommand() *cobra.Command {
 			}
 			q, ok := findQuery(spec, args[0])
 			if !ok {
-				return fmt.Errorf("QQQ_QUERY_NOT_FOUND: query %s is not declared", args[0])
+				return fmt.Errorf("%s: query %s is not declared", contract.ErrIDQueryNotFound, args[0])
 			}
 			paramMap, err := parseParams(params)
 			if err != nil {
@@ -297,28 +307,16 @@ func newQueryRunCommand() *cobra.Command {
 			}
 			for _, p := range q.Parameters {
 				if p.Required && strings.TrimSpace(paramMap[p.Name]) == "" {
-					return fmt.Errorf("QQQ_QUERY_PARAM_REQUIRED_MISSING: missing required parameter %s", p.Name)
+					return fmt.Errorf("%s: missing required parameter %s", contract.ErrIDQueryParamRequired, p.Name)
 				}
 			}
-			effLimit := limit
-			if effLimit <= 0 {
-				effLimit = spec.QueryExecution.Limits.DefaultResultLimitRows
-			}
-			effMaxRows := maxRows
-			if effMaxRows <= 0 {
-				effMaxRows = spec.QueryExecution.Limits.MaxRows
-			}
+			effLimit := chooseInt(limit, envInt("QQQ_QUERY_LIMIT"), spec.QueryExecution.Limits.DefaultResultLimitRows)
+			effMaxRows := chooseInt(maxRows, envInt("QQQ_MAX_ROWS"), spec.QueryExecution.Limits.MaxRows)
 			if effLimit > 0 && effMaxRows > 0 && effLimit > effMaxRows {
-				return fmt.Errorf("QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS: limit=%d max_rows=%d", effLimit, effMaxRows)
+				return fmt.Errorf("%s: limit=%d max_rows=%d", contract.ErrIDQueryLimitExceedsMaxRows, effLimit, effMaxRows)
 			}
-			effTimeout := timeout
-			if effTimeout <= 0 {
-				effTimeout = spec.QueryExecution.Limits.TimeoutSeconds
-			}
-			effStream := stream
-			if !stream {
-				effStream = spec.QueryExecution.Streaming.DefaultEnabled
-			}
+			effTimeout := chooseInt(timeout, envInt("QQQ_QUERY_TIMEOUT"), spec.QueryExecution.Limits.TimeoutSeconds)
+			effStream := chooseBool(stream, envBool("QQQ_STREAM"), spec.QueryExecution.Streaming.DefaultEnabled)
 			if chunkSize <= 0 {
 				chunkSize = spec.QueryExecution.Streaming.ChunkSizeRows
 			}
@@ -385,6 +383,9 @@ func runQuery(spec *config.Spec, q config.Query, params map[string]string, opts 
 	_ = spec
 	db, err := sql.Open("duckdb", "")
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return runResult{}, fmt.Errorf("%s: timeout=%d", contract.ErrIDQueryTimeout, opts.timeout)
+		}
 		return runResult{}, err
 	}
 	defer db.Close()
@@ -460,7 +461,7 @@ func bindQuery(q config.Query, params map[string]string, limit int) (string, err
 	for _, p := range q.Parameters {
 		val, ok := params[p.Name]
 		if p.Required && (!ok || strings.TrimSpace(val) == "") {
-			return "", fmt.Errorf("QQQ_QUERY_PARAM_REQUIRED_MISSING: missing required parameter %s", p.Name)
+			return "", fmt.Errorf("%s: missing required parameter %s", contract.ErrIDQueryParamRequired, p.Name)
 		}
 		if !ok {
 			continue
@@ -505,7 +506,7 @@ func emitJSONL(rows *sql.Rows, cols []string, maxRows int, out io.Writer) (runRe
 		_, _ = fmt.Fprintln(out, string(b))
 		emitted++
 		if maxRows > 0 && emitted > maxRows {
-			return runResult{}, fmt.Errorf("QQQ_QUERY_MAX_ROWS_EXCEEDED: emitted=%d max_rows=%d", emitted, maxRows)
+			return runResult{}, fmt.Errorf("%s: emitted=%d max_rows=%d", contract.ErrIDQueryMaxRowsExceeded, emitted, maxRows)
 		}
 	}
 	return runResult{rowsEmitted: emitted}, rows.Err()
@@ -526,7 +527,7 @@ func emitCSV(rows *sql.Rows, cols []string, maxRows int, out io.Writer) (runResu
 		_, _ = fmt.Fprintln(out, strings.Join(values, ","))
 		emitted++
 		if maxRows > 0 && emitted > maxRows {
-			return runResult{}, fmt.Errorf("QQQ_QUERY_MAX_ROWS_EXCEEDED: emitted=%d max_rows=%d", emitted, maxRows)
+			return runResult{}, fmt.Errorf("%s: emitted=%d max_rows=%d", contract.ErrIDQueryMaxRowsExceeded, emitted, maxRows)
 		}
 	}
 	return runResult{rowsEmitted: emitted}, rows.Err()
@@ -543,7 +544,7 @@ func emitJSON(rows *sql.Rows, cols []string, maxRows int, out io.Writer) (runRes
 		arr = append(arr, m)
 		emitted++
 		if maxRows > 0 && emitted > maxRows {
-			return runResult{}, fmt.Errorf("QQQ_QUERY_MAX_ROWS_EXCEEDED: emitted=%d max_rows=%d", emitted, maxRows)
+			return runResult{}, fmt.Errorf("%s: emitted=%d max_rows=%d", contract.ErrIDQueryMaxRowsExceeded, emitted, maxRows)
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -571,7 +572,7 @@ func emitTable(rows *sql.Rows, cols []string, maxRows int, out io.Writer) (runRe
 		_, _ = fmt.Fprintln(tw, strings.Join(line, "\t"))
 		emitted++
 		if maxRows > 0 && emitted > maxRows {
-			return runResult{}, fmt.Errorf("QQQ_QUERY_MAX_ROWS_EXCEEDED: emitted=%d max_rows=%d", emitted, maxRows)
+			return runResult{}, fmt.Errorf("%s: emitted=%d max_rows=%d", contract.ErrIDQueryMaxRowsExceeded, emitted, maxRows)
 		}
 	}
 	if err := rows.Err(); err != nil {
@@ -747,7 +748,24 @@ func renderConfigError(cmd *cobra.Command, err error) error {
 func renderValidateResult(cmd *cobra.Command, format string, result validate.DatasetResult, err error) error {
 	switch outputFormat(format) {
 	case formatJSON:
-		if wErr := writeJSON(cmd.OutOrStdout(), result); wErr != nil {
+		payload := map[string]any{
+			"output_schema_version": "v1",
+			"dataset_id":            result.DatasetID,
+			"validation_engine":     result.ValidationEngine,
+			"compression":           result.Compression,
+			"status":                result.Status,
+			"files_scanned":         result.FilesScanned,
+			"rows_checked":          result.RowsChecked,
+			"schema_mismatches":     result.SchemaMismatches,
+			"duration_ms":           result.DurationMs,
+		}
+		if result.ErrorID != "" {
+			payload["error_id"] = result.ErrorID
+		}
+		if result.Message != "" {
+			payload["message"] = result.Message
+		}
+		if wErr := writeJSON(cmd.OutOrStdout(), payload); wErr != nil {
 			return wErr
 		}
 	case formatText:
@@ -854,7 +872,7 @@ func parseParams(args []string) (map[string]string, error) {
 	for _, raw := range args {
 		k, v, ok := strings.Cut(raw, "=")
 		if !ok || strings.TrimSpace(k) == "" {
-			return nil, fmt.Errorf("QQQ_QUERY_PARAM_INVALID: expected key=value, got %q", raw)
+			return nil, fmt.Errorf("%s: expected key=value, got %q", contract.ErrIDQueryParamInvalid, raw)
 		}
 		out[strings.TrimSpace(k)] = strings.TrimSpace(v)
 	}
@@ -896,4 +914,41 @@ func writeOutput(out io.Writer, format string, payload any, text string) error {
 	default:
 		return fmt.Errorf("unsupported format %q", format)
 	}
+}
+
+func envInt(name string) int {
+	raw := strings.TrimSpace(os.Getenv(name))
+	if raw == "" {
+		return 0
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0
+	}
+	return v
+}
+
+func envBool(name string) bool {
+	raw := strings.TrimSpace(strings.ToLower(os.Getenv(name)))
+	return raw == "1" || raw == "true" || raw == "yes"
+}
+
+func chooseInt(flag, env, cfg int) int {
+	if flag > 0 {
+		return flag
+	}
+	if env > 0 {
+		return env
+	}
+	return cfg
+}
+
+func chooseBool(flag, env, cfg bool) bool {
+	if flag {
+		return true
+	}
+	if env {
+		return true
+	}
+	return cfg
 }
