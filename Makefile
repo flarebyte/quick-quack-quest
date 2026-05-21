@@ -14,7 +14,7 @@ GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DI
 .PHONY: help check-tools install-tools-help \
 	format lint test e2e build release review complexity sec dup clean \
 	doc-validate doc-generate doc-design \
-	config-validate build-go test-go lint-go test-unit test-race coverage
+	config-validate build-go test-go lint-go format-go test-unit test-race coverage
 
 ## Public developer targets
 help: ## Show available commands.
@@ -32,7 +32,7 @@ install-tools-help: ## Show how to install required tools.
 	@echo "go: https://go.dev/doc/install"
 	@echo "bun: https://bun.sh/docs/installation"
 
-format: doc-design ## Refresh generated design docs.
+format: format-go doc-design ## Format Go code and refresh generated design docs.
 
 lint: config-validate doc-validate lint-go ## Run configured lint checks.
 
@@ -95,3 +95,24 @@ coverage: ## Run Go tests with coverage summary.
 
 lint-go: ## Run Go vet.
 	@if [ -f go.mod ]; then $(GO_ENV) $(GO) vet $(GO_PACKAGES); else echo "go_vet=skipped (no go.mod)"; fi
+
+format-go: ## Run gofmt on all Go files.
+	@if [ -f go.mod ]; then \
+		files="$$(find . \
+			-type d \( -name .git -o -name vendor -o -name .gocache -o -name .gomodcache -o -name build -o -name tmp \) -prune \
+			-o -type f -name '*.go' -print)"; \
+		if [ -n "$$files" ]; then \
+			count="$$(printf "%s\n" "$$files" | wc -l | tr -d ' ')"; \
+			before="$$(git status --porcelain -- $$files)"; \
+			gofmt -w $$files; \
+			after="$$(git status --porcelain -- $$files)"; \
+			changed="$$(printf "%s\n" "$$after" | wc -l | tr -d ' ')"; \
+			if [ -z "$$after" ]; then changed=0; fi; \
+			echo "gofmt_scanned=$$count"; \
+			echo "gofmt_changed=$$changed"; \
+		else \
+			echo "gofmt=skipped (no .go files)"; \
+		fi; \
+	else \
+		echo "gofmt=skipped (no go.mod)"; \
+	fi
