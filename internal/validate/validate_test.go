@@ -44,13 +44,7 @@ func TestValidateDatasetNativeUnsupportedCompression(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected compatibility error")
 	}
-	vErr, ok := err.(*Error)
-	if !ok {
-		t.Fatalf("expected validate error type, got %T", err)
-	}
-	if vErr.ID != ErrIDCompatibilityUnsupported {
-		t.Fatalf("expected %s, got %s", ErrIDCompatibilityUnsupported, vErr.ID)
-	}
+	expectErrorID(t, err, ErrIDCompatibilityUnsupported)
 }
 
 func TestValidateDatasetNativeParquetUnsupported(t *testing.T) {
@@ -67,11 +61,16 @@ func TestValidateDatasetNativeParquetUnsupported(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected compatibility error")
 	}
+	expectErrorID(t, err, ErrIDCompatibilityUnsupported)
+}
+
+func expectErrorID(t *testing.T, err error, want string) {
+	t.Helper()
 	vErr, ok := err.(*Error)
 	if !ok {
 		t.Fatalf("expected validate error type, got %T", err)
 	}
-	if vErr.ID != ErrIDCompatibilityUnsupported {
-		t.Fatalf("expected %s, got %s", ErrIDCompatibilityUnsupported, vErr.ID)
+	if vErr.ID != want {
+		t.Fatalf("expected %s, got %s", want, vErr.ID)
 	}
 }

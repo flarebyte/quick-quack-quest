@@ -27,6 +27,14 @@ type InspectResult struct {
 	Message          string           `json:"message,omitempty"`
 }
 
+func failInspectResult(result InspectResult, start time.Time, errID, message string, cause error) (InspectResult, error) {
+	result.Status = "error"
+	result.ErrorID = errID
+	result.Message = message
+	result.DurationMs = time.Since(start).Milliseconds()
+	return result, &Error{ID: errID, Message: message, Cause: cause}
+}
+
 func InspectDataset(spec *config.Spec, datasetID string, opts Options, sampleSize int) (InspectResult, error) {
 	d, ok := findDataset(spec, datasetID)
 	if !ok {
@@ -46,27 +54,15 @@ func InspectDatasetDefinition(spec *config.Spec, d config.Dataset, opts Options,
 		SampleRows:       sampleSize,
 	}
 	if engine != "duckdb" && engine != "native" {
-		result.Status = "error"
-		result.ErrorID = ErrIDValidationEngine
-		result.Message = fmt.Sprintf("validation engine %s is not supported", engine)
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDValidationEngine, Message: result.Message}
+		return failInspectResult(result, start, ErrIDValidationEngine, fmt.Sprintf("validation engine %s is not supported", engine), nil)
 	}
 	if !supportsValidationCombo(engine, d.Format, compression) {
-		result.Status = "error"
-		result.ErrorID = ErrIDCompatibilityUnsupported
-		result.Message = fmt.Sprintf("validation is not supported for format=%s compression=%s engine=%s", d.Format, compression, engine)
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDCompatibilityUnsupported, Message: result.Message}
+		return failInspectResult(result, start, ErrIDCompatibilityUnsupported, fmt.Sprintf("validation is not supported for format=%s compression=%s engine=%s", d.Format, compression, engine), nil)
 	}
 
 	files, err := discoverFiles(d, opts)
 	if err != nil {
-		result.Status = "error"
-		result.ErrorID = ErrIDPartitionEmpty
-		result.Message = err.Error()
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDPartitionEmpty, Message: result.Message, Cause: err}
+		return failInspectResult(result, start, ErrIDPartitionEmpty, err.Error(), err)
 	}
 
 	var observed map[string]ObservedColumn
@@ -77,11 +73,7 @@ func InspectDatasetDefinition(spec *config.Spec, d config.Dataset, opts Options,
 		observed, err = inspectWithNative(d, files, compression, sampleSize)
 	}
 	if err != nil {
-		result.Status = "error"
-		result.ErrorID = ErrIDDatasetReadFailed
-		result.Message = err.Error()
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDDatasetReadFailed, Message: result.Message, Cause: err}
+		return failInspectResult(result, start, ErrIDDatasetReadFailed, err.Error(), err)
 	}
 
 	result.ObservedColumns = orderObservedColumns(d.Fields, observed)

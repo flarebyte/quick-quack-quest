@@ -18,27 +18,14 @@ import (
 
 func validateWithNative(spec *config.Spec, d config.Dataset, opts Options, result DatasetResult, start time.Time) (DatasetResult, error) {
 	if d.Format == "parquet" {
-		result.Status = "error"
-		result.ErrorID = ErrIDCompatibilityUnsupported
-		result.Message = "native validation does not support parquet"
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDCompatibilityUnsupported, Message: result.Message}
+		return failDatasetResult(result, start, ErrIDCompatibilityUnsupported, "native validation does not support parquet", nil)
 	}
 
 	files, err := discoverFiles(d, opts)
 	if err != nil {
-		result.Status = "error"
-		result.ErrorID = ErrIDPartitionEmpty
-		result.Message = err.Error()
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDPartitionEmpty, Message: err.Error(), Cause: err}
+		return failDatasetResult(result, start, ErrIDPartitionEmpty, err.Error(), err)
 	}
 	result.FilesScanned = len(files)
-
-	declared := map[string]string{}
-	for _, f := range d.Fields {
-		declared[strings.ToLower(f.Name)] = strings.ToUpper(f.Type)
-	}
 	sampleRows := resolveSampleRows(spec, d, opts.RandomSampleRows)
 
 	for _, p := range files {
@@ -48,31 +35,11 @@ func validateWithNative(spec *config.Spec, d config.Dataset, opts Options, resul
 			if strings.Contains(err.Error(), "codec") {
 				id = ErrIDNativeCodecUnavailable
 			}
-			result.Status = "error"
-			result.ErrorID = id
-			result.Message = fmt.Sprintf("failed reading %s", p)
-			result.DurationMs = time.Since(start).Milliseconds()
-			return result, &Error{ID: id, Message: result.Message, Cause: err}
+			return failDatasetResult(result, start, id, fmt.Sprintf("failed reading %s", p), err)
 		}
 		result.RowsChecked += checked
-		for name, expType := range declared {
-			gotType, ok := observed[name]
-			if !ok {
-				result.SchemaMismatches++
-				result.Status = "error"
-				result.ErrorID = ErrIDSchemaFieldMissing
-				result.Message = fmt.Sprintf("missing required field %s in dataset %s", name, d.ID)
-				result.DurationMs = time.Since(start).Milliseconds()
-				return result, &Error{ID: ErrIDSchemaFieldMissing, Message: result.Message}
-			}
-			if normalizeType(gotType) != normalizeType(expType) {
-				result.SchemaMismatches++
-				result.Status = "error"
-				result.ErrorID = ErrIDSchemaTypeMismatch
-				result.Message = fmt.Sprintf("field %s expected %s but got %s", name, expType, gotType)
-				result.DurationMs = time.Since(start).Milliseconds()
-				return result, &Error{ID: ErrIDSchemaTypeMismatch, Message: result.Message}
-			}
+		if out, schemaErr := validateDeclaredSchema(d, observed, &result, start); schemaErr != nil {
+			return out, schemaErr
 		}
 	}
 

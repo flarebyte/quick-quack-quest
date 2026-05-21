@@ -66,6 +66,35 @@ type DatasetResult struct {
 	Message          string `json:"message,omitempty"`
 }
 
+func failDatasetResult(result DatasetResult, start time.Time, errID, message string, cause error) (DatasetResult, error) {
+	result.Status = "error"
+	result.ErrorID = errID
+	result.Message = message
+	result.DurationMs = time.Since(start).Milliseconds()
+	return result, &Error{ID: errID, Message: message, Cause: cause}
+}
+
+func validateDeclaredSchema(d config.Dataset, observed map[string]string, result *DatasetResult, start time.Time) (DatasetResult, error) {
+	declared := map[string]string{}
+	for _, f := range d.Fields {
+		declared[strings.ToLower(f.Name)] = strings.ToUpper(f.Type)
+	}
+	for name, expType := range declared {
+		gotType, ok := observed[name]
+		if !ok {
+			result.SchemaMismatches++
+			message := fmt.Sprintf("missing required field %s in dataset %s", name, d.ID)
+			return failDatasetResult(*result, start, ErrIDSchemaFieldMissing, message, nil)
+		}
+		if normalizeType(gotType) != normalizeType(expType) {
+			result.SchemaMismatches++
+			message := fmt.Sprintf("field %s expected %s but got %s", name, expType, gotType)
+			return failDatasetResult(*result, start, ErrIDSchemaTypeMismatch, message, nil)
+		}
+	}
+	return *result, nil
+}
+
 func ValidateDataset(spec *config.Spec, datasetID string, opts Options) (DatasetResult, error) {
 	d, ok := findDataset(spec, datasetID)
 	if !ok {
@@ -84,18 +113,10 @@ func ValidateDatasetDefinition(spec *config.Spec, d config.Dataset, opts Options
 		Compression:      compression,
 	}
 	if engine != "duckdb" && engine != "native" {
-		result.Status = "error"
-		result.ErrorID = ErrIDValidationEngine
-		result.Message = fmt.Sprintf("validation engine %s is not supported", engine)
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDValidationEngine, Message: result.Message}
+		return failDatasetResult(result, start, ErrIDValidationEngine, fmt.Sprintf("validation engine %s is not supported", engine), nil)
 	}
 	if !supportsValidationCombo(engine, d.Format, compression) {
-		result.Status = "error"
-		result.ErrorID = ErrIDCompatibilityUnsupported
-		result.Message = fmt.Sprintf("validation is not supported for format=%s compression=%s engine=%s", d.Format, compression, engine)
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDCompatibilityUnsupported, Message: result.Message}
+		return failDatasetResult(result, start, ErrIDCompatibilityUnsupported, fmt.Sprintf("validation is not supported for format=%s compression=%s engine=%s", d.Format, compression, engine), nil)
 	}
 
 	switch engine {
@@ -110,64 +131,27 @@ func ValidateDatasetDefinition(spec *config.Spec, d config.Dataset, opts Options
 func validateWithDuckDB(spec *config.Spec, d config.Dataset, opts Options, result DatasetResult, start time.Time) (DatasetResult, error) {
 	files, err := discoverFiles(d, opts)
 	if err != nil {
-		result.Status = "error"
-		result.ErrorID = ErrIDPartitionEmpty
-		result.Message = err.Error()
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDPartitionEmpty, Message: err.Error(), Cause: err}
+		return failDatasetResult(result, start, ErrIDPartitionEmpty, err.Error(), err)
 	}
 	result.FilesScanned = len(files)
 
 	db, err := sql.Open("duckdb", "")
 	if err != nil {
-		result.Status = "error"
-		result.ErrorID = ErrIDDatasetValidateFailed
-		result.Message = "open duckdb"
-		result.DurationMs = time.Since(start).Milliseconds()
-		return result, &Error{ID: ErrIDDatasetValidateFailed, Message: "open duckdb", Cause: err}
+		return failDatasetResult(result, start, ErrIDDatasetValidateFailed, "open duckdb", err)
 	}
 	defer db.Close()
-
-	declared := map[string]string{}
-	for _, f := range d.Fields {
-		declared[strings.ToLower(f.Name)] = strings.ToUpper(f.Type)
-	}
 
 	for _, p := range files {
 		observed, err := describeFile(db, d, p)
 		if err != nil {
-			result.Status = "error"
-			result.ErrorID = ErrIDDatasetReadFailed
-			result.Message = fmt.Sprintf("failed reading %s", p)
-			result.DurationMs = time.Since(start).Milliseconds()
-			return result, &Error{ID: ErrIDDatasetReadFailed, Message: result.Message, Cause: err}
+			return failDatasetResult(result, start, ErrIDDatasetReadFailed, fmt.Sprintf("failed reading %s", p), err)
 		}
-		for name, expType := range declared {
-			gotType, ok := observed[name]
-			if !ok {
-				result.SchemaMismatches++
-				result.Status = "error"
-				result.ErrorID = ErrIDSchemaFieldMissing
-				result.Message = fmt.Sprintf("missing required field %s in dataset %s", name, d.ID)
-				result.DurationMs = time.Since(start).Milliseconds()
-				return result, &Error{ID: ErrIDSchemaFieldMissing, Message: result.Message}
-			}
-			if normalizeType(gotType) != normalizeType(expType) {
-				result.SchemaMismatches++
-				result.Status = "error"
-				result.ErrorID = ErrIDSchemaTypeMismatch
-				result.Message = fmt.Sprintf("field %s expected %s but got %s", name, expType, gotType)
-				result.DurationMs = time.Since(start).Milliseconds()
-				return result, &Error{ID: ErrIDSchemaTypeMismatch, Message: result.Message}
-			}
+		if out, schemaErr := validateDeclaredSchema(d, observed, &result, start); schemaErr != nil {
+			return out, schemaErr
 		}
 		checked, err := countRowsChecked(db, d, p, resolveSampleRows(spec, d, opts.RandomSampleRows))
 		if err != nil {
-			result.Status = "error"
-			result.ErrorID = ErrIDDatasetReadFailed
-			result.Message = fmt.Sprintf("failed counting rows for %s", p)
-			result.DurationMs = time.Since(start).Milliseconds()
-			return result, &Error{ID: ErrIDDatasetReadFailed, Message: result.Message, Cause: err}
+			return failDatasetResult(result, start, ErrIDDatasetReadFailed, fmt.Sprintf("failed counting rows for %s", p), err)
 		}
 		result.RowsChecked += checked
 	}
