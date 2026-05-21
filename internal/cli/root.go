@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -21,6 +22,8 @@ import (
 	"github.com/flarebyte/quick-quack-quest/internal/validate"
 	"github.com/spf13/cobra"
 )
+
+var sqlIdentRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 var (
 	Version = "dev"
@@ -390,33 +393,34 @@ func runQuery(spec *config.Spec, q config.Query, params map[string]string, opts 
 	}
 	defer db.Close()
 
+	datasets := make([]config.Dataset, 0, len(q.RequiredDatasets))
 	for _, dsID := range q.RequiredDatasets {
 		ds, ok := findDatasetByID(spec, dsID)
 		if !ok {
 			return runResult{}, fmt.Errorf("QQQ_DATASET_NOT_FOUND: dataset %s is not declared", dsID)
 		}
-		glob := ds.Path
-		if ds.Layout == "partitioned" {
-			glob = ds.Prefix + "*" + ds.Suffix
+		if !sqlIdentRe.MatchString(ds.ID) {
+			return runResult{}, fmt.Errorf("QQQ_DATASET_ID_INVALID: invalid dataset identifier %q", ds.ID)
 		}
-		src := sourceExprForRun(ds.Format, filepath.ToSlash(glob))
-		stmt := fmt.Sprintf("CREATE OR REPLACE VIEW %s AS SELECT * FROM %s", ds.ID, src)
-		if _, err := db.Exec(stmt); err != nil {
-			return runResult{}, err
-		}
+		datasets = append(datasets, ds)
 	}
 
-	sqlText, err := bindQuery(q, params, opts.limit)
+	sqlWithSources, sourceArgs, err := injectDatasetSources(q.SQL, datasets)
 	if err != nil {
 		return runResult{}, err
 	}
+	sqlText, paramArgs, err := bindQuery(sqlWithSources, q, params, opts.limit)
+	if err != nil {
+		return runResult{}, err
+	}
+	args := append(sourceArgs, paramArgs...)
 	ctx := context.Background()
 	if opts.timeout > 0 {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, time.Duration(opts.timeout)*time.Second)
 		defer cancel()
 	}
-	rows, err := db.QueryContext(ctx, sqlText)
+	rows, err := db.QueryContext(ctx, sqlText, args...)
 	if err != nil {
 		return runResult{}, err
 	}
@@ -440,47 +444,90 @@ func runQuery(spec *config.Spec, q config.Query, params map[string]string, opts 
 	}
 }
 
-func sourceExprForRun(format, path string) string {
-	escaped := strings.ReplaceAll(path, "'", "''")
+func sourceExprForRun(format string) string {
 	switch format {
 	case "csv":
-		return fmt.Sprintf("read_csv_auto('%s')", escaped)
+		return "read_csv_auto(?)"
 	case "json":
-		return fmt.Sprintf("read_json_auto('%s')", escaped)
+		return "read_json_auto(?)"
 	case "ndjson":
-		return fmt.Sprintf("read_json_auto('%s', format='newline_delimited')", escaped)
+		return "read_json_auto(?, format='newline_delimited')"
 	case "parquet":
-		return fmt.Sprintf("read_parquet('%s')", escaped)
+		return "read_parquet(?)"
 	default:
-		return fmt.Sprintf("read_csv_auto('%s')", escaped)
+		return "read_csv_auto(?)"
 	}
 }
 
-func bindQuery(q config.Query, params map[string]string, limit int) (string, error) {
-	sqlText := q.SQL
+func bindQuery(baseSQL string, q config.Query, params map[string]string, limit int) (string, []any, error) {
+	sqlText := baseSQL
+	args := make([]any, 0, len(q.Parameters))
 	for _, p := range q.Parameters {
 		val, ok := params[p.Name]
 		if p.Required && (!ok || strings.TrimSpace(val) == "") {
-			return "", fmt.Errorf("%s: missing required parameter %s", contract.ErrIDQueryParamRequired, p.Name)
+			return "", nil, fmt.Errorf("%s: missing required parameter %s", contract.ErrIDQueryParamRequired, p.Name)
 		}
 		if !ok {
 			continue
 		}
-		repl := quoteParam(p.Type, val)
-		sqlText = strings.ReplaceAll(sqlText, "$"+p.Name, repl)
+		bound, err := coerceParam(p.Type, val)
+		if err != nil {
+			return "", nil, fmt.Errorf("%s: invalid value for parameter %s", contract.ErrIDQueryParamInvalid, p.Name)
+		}
+		token := "$" + p.Name
+		occurrences := strings.Count(sqlText, token)
+		if occurrences == 0 {
+			continue
+		}
+		sqlText = strings.ReplaceAll(sqlText, token, "?")
+		for i := 0; i < occurrences; i++ {
+			args = append(args, bound)
+		}
 	}
 	if limit > 0 {
 		sqlText = fmt.Sprintf("SELECT * FROM (%s) AS qqq_q LIMIT %d", sqlText, limit)
 	}
-	return sqlText, nil
+	return sqlText, args, nil
 }
 
-func quoteParam(typ, value string) string {
-	t := strings.ToUpper(strings.TrimSpace(typ))
-	if t == "INTEGER" || t == "DOUBLE" || t == "BIGINT" || t == "SMALLINT" {
-		return value
+func injectDatasetSources(sqlText string, datasets []config.Dataset) (string, []any, error) {
+	args := make([]any, 0, len(datasets))
+	for _, ds := range datasets {
+		re := regexp.MustCompile(`\b` + regexp.QuoteMeta(ds.ID) + `\b`)
+		count := len(re.FindAllStringIndex(sqlText, -1))
+		if count == 0 {
+			continue
+		}
+		sqlText = re.ReplaceAllString(sqlText, "(SELECT * FROM "+sourceExprForRun(ds.Format)+")")
+		path := ds.Path
+		if ds.Layout == "partitioned" {
+			path = ds.Prefix + "*" + ds.Suffix
+		}
+		for i := 0; i < count; i++ {
+			args = append(args, filepath.ToSlash(path))
+		}
 	}
-	return "'" + strings.ReplaceAll(value, "'", "''") + "'"
+	return sqlText, args, nil
+}
+
+func coerceParam(typ, value string) (any, error) {
+	t := strings.ToUpper(strings.TrimSpace(typ))
+	switch t {
+	case "INTEGER", "BIGINT", "SMALLINT", "TINYINT", "UINTEGER", "UBIGINT", "USMALLINT", "UTINYINT":
+		v, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	case "DOUBLE", "FLOAT", "DECIMAL":
+		v, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return nil, err
+		}
+		return v, nil
+	default:
+		return value, nil
+	}
 }
 
 func findDatasetByID(spec *config.Spec, datasetID string) (config.Dataset, bool) {

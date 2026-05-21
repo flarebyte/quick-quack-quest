@@ -48,14 +48,16 @@ release: ## Build and publish a GitHub release via gh flarebyte.
 
 review: format test lint e2e ## Run standard review gate.
 
-complexity: ## No complexity scan is defined yet.
-	@echo "complexity=not_configured"
+complexity:
+	scc --sort complexity --by-file -i go . | head -n 15
+	scc --sort complexity --by-file -i ts . | head -n 15
 
-sec: ## No security scan is defined yet.
-	@echo "sec=not_configured"
+sec:
+	semgrep scan --config auto
 
-dup: ## No duplication scan is defined yet.
-	@echo "dup=not_configured"
+dup:
+	npx jscpd --format go --min-lines 10 --ignore "**/.gomodcache/**,**/.gocache/**,**/.e2e-bin/**,**/node_modules/**,**/dist/**" --gitignore .
+	npx jscpd --format typescript --min-lines 10 --gitignore .
 
 clean: ## Remove generated build artifacts.
 	rm -rf ./build ./.gocache ./.gomodcache
@@ -116,3 +118,11 @@ format-go: ## Run gofmt on all Go files.
 	else \
 		echo "gofmt=skipped (no go.mod)"; \
 	fi
+
+thoth-meta: thoth-meta-go thoth-meta-go-test
+
+thoth-meta-go:
+	$(THOTH) run --config ./pipeline-go-maat.thoth.cue
+
+thoth-meta-go-test:
+	$(THOTH) run --config ./pipeline-go-test-maat.thoth.cue

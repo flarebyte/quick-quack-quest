@@ -1,9 +1,11 @@
 package validate
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/binary"
 	"fmt"
-	"math/rand"
+	"hash/fnv"
 	"os"
 	"path/filepath"
 	"slices"
@@ -254,18 +256,55 @@ func discoverFiles(d config.Dataset, opts Options) ([]string, error) {
 	if opts.RandomSampleFiles > 0 && len(files) > opts.RandomSampleFiles {
 		seed := opts.SampleSeed
 		if seed == 0 {
-			seed = 1
+			seed = randomSeed()
 		}
-		r := rand.New(rand.NewSource(seed))
-		perm := r.Perm(len(files))[:opts.RandomSampleFiles]
-		picked := make([]string, 0, len(perm))
-		for _, idx := range perm {
-			picked = append(picked, files[idx])
-		}
+		picked := pickDeterministicSample(files, opts.RandomSampleFiles, seed)
 		slices.Sort(picked)
 		files = picked
 	}
 	return files, nil
+}
+
+func randomSeed() int64 {
+	var b [8]byte
+	if _, err := rand.Read(b[:]); err != nil {
+		return 1
+	}
+	return int64(binary.LittleEndian.Uint64(b[:]))
+}
+
+func pickDeterministicSample(files []string, sampleSize int, seed int64) []string {
+	type scored struct {
+		file  string
+		score uint64
+	}
+	scoredFiles := make([]scored, 0, len(files))
+	for _, f := range files {
+		h := fnv.New64a()
+		_, _ = h.Write([]byte(fmt.Sprintf("%d|%s", seed, f)))
+		scoredFiles = append(scoredFiles, scored{
+			file:  f,
+			score: h.Sum64(),
+		})
+	}
+	slices.SortFunc(scoredFiles, func(a, b scored) int {
+		if a.score < b.score {
+			return -1
+		}
+		if a.score > b.score {
+			return 1
+		}
+		return strings.Compare(a.file, b.file)
+	})
+	n := sampleSize
+	if n > len(scoredFiles) {
+		n = len(scoredFiles)
+	}
+	picked := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		picked = append(picked, scoredFiles[i].file)
+	}
+	return picked
 }
 
 func describeFile(db *sql.DB, d config.Dataset, path string) (map[string]string, error) {
