@@ -101,6 +101,30 @@ build: {
   ]
 }
 
+format: {
+  env: {
+    GOTOOLCHAIN: "local"
+    GOCACHE:     ".gocache"
+    GOMODCACHE:  ".gomodcache"
+  }
+}
+
+lint: {
+  env: {
+    GOTOOLCHAIN: "local"
+    GOCACHE:     ".gocache"
+    GOMODCACHE:  ".gomodcache"
+  }
+}
+
+test: {
+  env: {
+    GOTOOLCHAIN: "local"
+    GOCACHE:     ".gocache"
+    GOMODCACHE:  ".gomodcache"
+  }
+}
+
 release: {
   versionSource:    "main.project.yaml"
   tagPrefix:        "v"

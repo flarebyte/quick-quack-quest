@@ -32,11 +32,11 @@ install-tools-help: ## Show how to install required tools.
 	@echo "go: https://go.dev/doc/install"
 	@echo "bun: https://bun.sh/docs/installation"
 
-format: format-go doc-design ## Format Go code and refresh generated design docs.
+format: format-go doc-design ## Format code via gh flarebyte and refresh generated design docs.
 
-lint: config-validate doc-validate lint-go ## Run configured lint checks.
+lint: config-validate doc-validate lint-go ## Run configured lint checks via gh flarebyte.
 
-test: test-go ## Run default automated checks.
+test: test-go ## Run default automated checks via gh flarebyte.
 
 e2e: ## Run TypeScript end-to-end tests with Bun.
 	$(BUN) run e2e
@@ -78,7 +78,8 @@ config-validate: ## Validate gh flarebyte config.
 build-go: ## Build project artifacts from gh flarebyte config.
 	$(GH) flarebyte build
 
-test-go: test-unit ## Run Go test targets.
+test-go: ## Run project tests via gh flarebyte.
+	$(GH) flarebyte test
 
 test-unit: ## Run Go tests.
 	@if [ -f go.mod ]; then $(GO_ENV) $(GO) test $(GO_PACKAGES); else echo "go_tests=skipped (no go.mod)"; fi
@@ -95,29 +96,11 @@ coverage: ## Run Go tests with coverage summary.
 		echo "go_coverage=skipped (no go.mod)"; \
 	fi
 
-lint-go: ## Run Go vet.
-	@if [ -f go.mod ]; then $(GO_ENV) $(GO) vet $(GO_PACKAGES); else echo "go_vet=skipped (no go.mod)"; fi
+lint-go: ## Run lint checks via gh flarebyte.
+	$(GH) flarebyte lint
 
-format-go: ## Run gofmt on all Go files.
-	@if [ -f go.mod ]; then \
-		files="$$(find . \
-			-type d \( -name .git -o -name vendor -o -name .gocache -o -name .gomodcache -o -name build -o -name tmp \) -prune \
-			-o -type f -name '*.go' -print)"; \
-		if [ -n "$$files" ]; then \
-			count="$$(printf "%s\n" "$$files" | wc -l | tr -d ' ')"; \
-			before="$$(git status --porcelain -- $$files)"; \
-			gofmt -w $$files; \
-			after="$$(git status --porcelain -- $$files)"; \
-			changed="$$(printf "%s\n" "$$after" | wc -l | tr -d ' ')"; \
-			if [ -z "$$after" ]; then changed=0; fi; \
-			echo "gofmt_scanned=$$count"; \
-			echo "gofmt_changed=$$changed"; \
-		else \
-			echo "gofmt=skipped (no .go files)"; \
-		fi; \
-	else \
-		echo "gofmt=skipped (no go.mod)"; \
-	fi
+format-go: ## Run formatting via gh flarebyte.
+	$(GH) flarebyte format
 
 thoth-meta: thoth-meta-go thoth-meta-go-test
 
