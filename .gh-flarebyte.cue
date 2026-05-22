@@ -111,6 +111,11 @@ devOutput: {
   showPassed: true
 }
 
+coverage: {
+  default_min_percent: 90
+  fail_below_min:     true
+}
+
 release: {
   versionSource:    "main.project.yaml"
   tagPrefix:        "v"

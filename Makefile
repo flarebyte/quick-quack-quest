@@ -14,7 +14,7 @@ GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DI
 .PHONY: help check-tools install-tools-help \
 	format lint test e2e build release review complexity sec dup clean \
 	doc-validate doc-generate doc-design \
-	config-validate build-go test-go lint-go format-go test-unit test-race coverage
+	config-validate build-go test-go lint-go format-go test-unit test-race coverage cov
 
 ## Public developer targets
 help: ## Show available commands.
@@ -95,6 +95,9 @@ coverage: ## Run Go tests with coverage summary.
 	else \
 		echo "go_coverage=skipped (no go.mod)"; \
 	fi
+
+cov: ## Enforce minimum test coverage via gh flarebyte.
+	$(GO_ENV) $(GH) flarebyte cov --min 90
 
 lint-go: ## Run lint checks via gh flarebyte.
 	$(GO_ENV) $(GH) flarebyte lint
