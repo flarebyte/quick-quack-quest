@@ -79,7 +79,7 @@ build-go: ## Build project artifacts from gh flarebyte config.
 	$(GH) flarebyte build
 
 test-go: ## Run project tests via gh flarebyte.
-	$(GH) flarebyte test
+	$(GO_ENV) $(GH) flarebyte test
 
 test-unit: ## Run Go tests.
 	@if [ -f go.mod ]; then $(GO_ENV) $(GO) test $(GO_PACKAGES); else echo "go_tests=skipped (no go.mod)"; fi
@@ -97,10 +97,10 @@ coverage: ## Run Go tests with coverage summary.
 	fi
 
 lint-go: ## Run lint checks via gh flarebyte.
-	$(GH) flarebyte lint
+	$(GO_ENV) $(GH) flarebyte lint
 
 format-go: ## Run formatting via gh flarebyte.
-	$(GH) flarebyte format
+	$(GO_ENV) $(GH) flarebyte format
 
 thoth-meta: thoth-meta-go thoth-meta-go-test
 

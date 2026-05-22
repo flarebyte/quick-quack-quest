@@ -101,28 +101,14 @@ build: {
   ]
 }
 
-format: {
-  env: {
-    GOTOOLCHAIN: "local"
-    GOCACHE:     ".gocache"
-    GOMODCACHE:  ".gomodcache"
-  }
+go: {
+  toolchain:     "local"
 }
 
-lint: {
-  env: {
-    GOTOOLCHAIN: "local"
-    GOCACHE:     ".gocache"
-    GOMODCACHE:  ".gomodcache"
-  }
-}
-
-test: {
-  env: {
-    GOTOOLCHAIN: "local"
-    GOCACHE:     ".gocache"
-    GOMODCACHE:  ".gomodcache"
-  }
+devOutput: {
+  color: "auto"
+  style: "per_test"
+  showPassed: true
 }
 
 release: {
