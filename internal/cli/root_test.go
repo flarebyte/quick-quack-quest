@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/spf13/cobra"
 )
+
+const testConfigPath = "../../doc/design-meta/examples/config/cli-config.cue"
 
 func TestVersionJSONOutput(t *testing.T) {
 	t.Parallel()
@@ -39,11 +43,7 @@ func TestVersionJSONOutput(t *testing.T) {
 func TestDatasetListJSONOutput(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{"dataset", "list", "--format", "json", "--config", "../../doc/design-meta/examples/config/cli-config.cue"})
+	cmd, out, _ := newTestCommand(false, "dataset", "list", "--format", "json", "--config", testConfigPath)
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -70,11 +70,7 @@ func TestDatasetListJSONOutput(t *testing.T) {
 func TestDatasetListTextOutput(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{"dataset", "list", "--format", "text", "--config", "../../doc/design-meta/examples/config/cli-config.cue"})
+	cmd, out, _ := newTestCommand(false, "dataset", "list", "--format", "text", "--config", testConfigPath)
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -96,177 +92,85 @@ func TestDatasetListTextOutput(t *testing.T) {
 
 func TestDatasetValidateJSONOutputSuccess(t *testing.T) {
 	t.Parallel()
-
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	runDatasetJSONStatusTest(t, []string{
 		"dataset", "validate", "customers_master",
 		"--format", "json",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
+	}, map[string]any{
+		"status":                "ok",
+		"output_schema_version": "v1",
+		"dataset_id":            "customers_master",
 	})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute: %v\noutput=%s", err, out.String())
-	}
-
-	var got map[string]any
-	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
-	}
-	if got["status"] != "ok" {
-		t.Fatalf("expected ok status, got %v", got["status"])
-	}
-	if got["output_schema_version"] != "v1" {
-		t.Fatalf("expected output_schema_version v1, got %v", got["output_schema_version"])
-	}
-	if got["dataset_id"] != "customers_master" {
-		t.Fatalf("dataset mismatch: %v", got["dataset_id"])
-	}
 }
 
 func TestDatasetValidateDatasetNotFound(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	cmd, out, _ := newTestCommand(false,
 		"dataset", "validate", "not_a_dataset",
 		"--format", "json",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
-	})
+		"--config", testConfigPath,
+	)
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatalf("expected error, got nil\noutput=%s", out.String())
-	}
-	if !strings.Contains(err.Error(), "QQQ_DATASET_NOT_FOUND") {
-		t.Fatalf("expected QQQ_DATASET_NOT_FOUND, got %v", err)
-	}
+	expectCommandErrorContains(t, cmd.Execute(), "QQQ_DATASET_NOT_FOUND", out.String())
 }
 
 func TestDatasetValidateUnsupportedEngine(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	cmd, out, _ := newTestCommand(false,
 		"dataset", "validate", "customers_master",
 		"--validation-engine", "bogus",
 		"--format", "json",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
-	})
+		"--config", testConfigPath,
+	)
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatalf("expected error, got nil\noutput=%s", out.String())
-	}
-	if !strings.Contains(err.Error(), "QQQ_VALIDATION_ENGINE_UNSUPPORTED") {
-		t.Fatalf("expected QQQ_VALIDATION_ENGINE_UNSUPPORTED, got %v", err)
-	}
+	expectCommandErrorContains(t, cmd.Execute(), "QQQ_VALIDATION_ENGINE_UNSUPPORTED", out.String())
 }
 
 func TestDatasetValidateNativeJSONOutputSuccess(t *testing.T) {
 	t.Parallel()
-
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	runDatasetJSONStatusTest(t, []string{
 		"dataset", "validate", "customers_master",
 		"--validation-engine", "native",
 		"--format", "json",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
+	}, map[string]any{
+		"status": "ok",
 	})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute: %v\noutput=%s", err, out.String())
-	}
-
-	var got map[string]any
-	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
-	}
-	if got["status"] != "ok" {
-		t.Fatalf("expected ok status, got %v", got["status"])
-	}
 }
 
 func TestDatasetInspectDuckDBJSONOutputSuccess(t *testing.T) {
 	t.Parallel()
-
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	runDatasetJSONStatusTest(t, []string{
 		"dataset", "inspect", "customers_master",
 		"--format", "json",
 		"--sample-size", "10",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
+	}, map[string]any{
+		"status":                "ok",
+		"output_schema_version": "v1",
 	})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute: %v\noutput=%s", err, out.String())
-	}
-
-	var got map[string]any
-	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
-	}
-	if got["status"] != "ok" {
-		t.Fatalf("expected ok status, got %v", got["status"])
-	}
-	if got["output_schema_version"] != "v1" {
-		t.Fatalf("expected output_schema_version v1, got %v", got["output_schema_version"])
-	}
 }
 
 func TestDatasetInspectNativeGzipJSONOutputSuccess(t *testing.T) {
 	t.Parallel()
-
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	runDatasetJSONStatusTest(t, []string{
 		"dataset", "inspect", "events_stream",
 		"--validation-engine", "native",
 		"--format", "json",
 		"--sample-size", "5",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
+	}, map[string]any{
+		"status":      "ok",
+		"compression": "gzip",
 	})
-
-	if err := cmd.Execute(); err != nil {
-		t.Fatalf("execute: %v\noutput=%s", err, out.String())
-	}
-
-	var got map[string]any
-	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
-		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
-	}
-	if got["status"] != "ok" {
-		t.Fatalf("expected ok status, got %v", got["status"])
-	}
-	if got["compression"] != "gzip" {
-		t.Fatalf("expected gzip compression, got %v", got["compression"])
-	}
 }
 
 func TestQueryListJSONOutput(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{"query", "list", "--format", "json", "--config", "../../doc/design-meta/examples/config/cli-config.cue"})
+	cmd, out, _ := newTestCommand(false, "query", "list", "--format", "json", "--config", testConfigPath)
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v", err)
@@ -287,11 +191,7 @@ func TestQueryListJSONOutput(t *testing.T) {
 func TestQueryExplainJSONOutput(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{"query", "explain", "sales_by_country", "--format", "json", "--config", "../../doc/design-meta/examples/config/cli-config.cue"})
+	cmd, out, _ := newTestCommand(false, "query", "explain", "sales_by_country", "--format", "json", "--config", testConfigPath)
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v\noutput=%s", err, out.String())
@@ -312,83 +212,48 @@ func TestQueryExplainJSONOutput(t *testing.T) {
 func TestQueryExplainUnknownQuery(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{"query", "explain", "missing_query", "--format", "json", "--config", "../../doc/design-meta/examples/config/cli-config.cue"})
+	cmd, _, _ := newTestCommand(false, "query", "explain", "missing_query", "--format", "json", "--config", testConfigPath)
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatalf("expected error")
-	}
-	if !strings.Contains(err.Error(), "QQQ_QUERY_NOT_FOUND") {
-		t.Fatalf("expected QQQ_QUERY_NOT_FOUND, got %v", err)
-	}
+	expectCommandErrorContains(t, cmd.Execute(), "QQQ_QUERY_NOT_FOUND", "")
 }
 
 func TestQueryExplainMissingRequiredParam(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	cmd, _, _ := newTestCommand(false,
 		"query", "explain", "sales_by_country",
 		"--format", "json",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
 		"--param", "start_date=2026-01-01",
-	})
+	)
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatalf("expected error")
-	}
-	if !strings.Contains(err.Error(), "QQQ_QUERY_PARAM_REQUIRED_MISSING") {
-		t.Fatalf("expected QQQ_QUERY_PARAM_REQUIRED_MISSING, got %v", err)
-	}
+	expectCommandErrorContains(t, cmd.Execute(), "QQQ_QUERY_PARAM_REQUIRED_MISSING", "")
 }
 
 func TestQueryExplainInvalidParamFormat(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	cmd, _, _ := newTestCommand(false,
 		"query", "explain", "sales_by_country",
 		"--format", "json",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
 		"--param", "badparam",
-	})
+	)
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatalf("expected error")
-	}
-	if !strings.Contains(err.Error(), "QQQ_QUERY_PARAM_INVALID") {
-		t.Fatalf("expected QQQ_QUERY_PARAM_INVALID, got %v", err)
-	}
+	expectCommandErrorContains(t, cmd.Execute(), "QQQ_QUERY_PARAM_INVALID", "")
 }
 
 func TestQueryRunJSONLSuccess(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&errOut)
-	cmd.SetArgs([]string{
+	cmd, out, errOut := newTestCommand(true,
 		"query", "run", "sales_by_country",
 		"--format", "jsonl",
 		"--stream",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
 		"--param", "start_date=2026-01-01",
 		"--param", "end_date=2026-01-31",
-	})
+	)
 
 	if err := cmd.Execute(); err != nil {
 		t.Fatalf("execute: %v\nstdout=%s\nstderr=%s", err, out.String(), errOut.String())
@@ -415,42 +280,27 @@ func TestQueryRunJSONLSuccess(t *testing.T) {
 func TestQueryRunLimitExceedsMaxRows(t *testing.T) {
 	t.Parallel()
 
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&out)
-	cmd.SetArgs([]string{
+	cmd, _, _ := newTestCommand(false,
 		"query", "run", "sales_by_country",
 		"--format", "json",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
 		"--param", "start_date=2026-01-01",
 		"--param", "end_date=2026-01-31",
 		"--limit", "5",
 		"--max-rows", "2",
-	})
+	)
 
-	err := cmd.Execute()
-	if err == nil {
-		t.Fatalf("expected error")
-	}
-	if !strings.Contains(err.Error(), "QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS") {
-		t.Fatalf("expected QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS, got %v", err)
-	}
+	expectCommandErrorContains(t, cmd.Execute(), "QQQ_QUERY_LIMIT_EXCEEDS_MAX_ROWS", "")
 }
 
 func TestQueryRunEnvPrecedenceForLimit(t *testing.T) {
-	cmd := NewRootCommand()
-	var out bytes.Buffer
-	var errOut bytes.Buffer
-	cmd.SetOut(&out)
-	cmd.SetErr(&errOut)
-	cmd.SetArgs([]string{
+	cmd, _, errOut := newTestCommand(true,
 		"query", "run", "sales_by_country",
 		"--format", "jsonl",
-		"--config", "../../doc/design-meta/examples/config/cli-config.cue",
+		"--config", testConfigPath,
 		"--param", "start_date=2026-01-01",
 		"--param", "end_date=2026-01-31",
-	})
+	)
 	t.Setenv("QQQ_QUERY_LIMIT", "1")
 	t.Setenv("QQQ_MAX_ROWS", "10")
 
@@ -459,5 +309,54 @@ func TestQueryRunEnvPrecedenceForLimit(t *testing.T) {
 	}
 	if !strings.Contains(errOut.String(), "\"limit\": 1") {
 		t.Fatalf("expected env limit in summary, got: %s", errOut.String())
+	}
+}
+
+func newTestCommand(separateErr bool, args ...string) (*cobra.Command, *bytes.Buffer, *bytes.Buffer) {
+	cmd := NewRootCommand()
+	var out bytes.Buffer
+	var errOut bytes.Buffer
+	cmd.SetOut(&out)
+	if separateErr {
+		cmd.SetErr(&errOut)
+	} else {
+		cmd.SetErr(&out)
+	}
+	cmd.SetArgs(args)
+	return cmd, &out, &errOut
+}
+
+func expectCommandErrorContains(t *testing.T, err error, want, output string) {
+	t.Helper()
+	if err == nil {
+		if output != "" {
+			t.Fatalf("expected error, got nil\noutput=%s", output)
+		}
+		t.Fatalf("expected error")
+	}
+	if !strings.Contains(err.Error(), want) {
+		t.Fatalf("expected %s, got %v", want, err)
+	}
+}
+
+func runDatasetJSONStatusTest(t *testing.T, args []string, expected map[string]any) {
+	t.Helper()
+	cmd, out, _ := newTestCommand(false, args...)
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v\noutput=%s", err, out.String())
+	}
+	var got map[string]any
+	if err := json.Unmarshal(out.Bytes(), &got); err != nil {
+		t.Fatalf("unmarshal: %v\noutput=%s", err, out.String())
+	}
+	assertJSONFields(t, got, expected)
+}
+
+func assertJSONFields(t *testing.T, got map[string]any, expected map[string]any) {
+	t.Helper()
+	for k, v := range expected {
+		if got[k] != v {
+			t.Fatalf("expected %s=%v, got %v", k, v, got[k])
+		}
 	}
 }
