@@ -1,0 +1,11 @@
+locator: internal/validate/inspect_duckdb.go
+meta:
+  function_list:
+    - inspectWithDuckDB
+  import_files_list:
+    - database/sql
+    - fmt
+    - github.com/duckdb/duckdb-go/v2
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - strings
+  language: go

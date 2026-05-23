@@ -1,0 +1,5 @@
+locator: internal/contract/errors.go
+meta:
+  function_list: []
+  import_files_list: []
+  language: go

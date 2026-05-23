@@ -1,0 +1,31 @@
+locator: internal/cli/root_test.go
+meta:
+  function_list:
+    - TestDatasetInspectDuckDBJSONOutputSuccess
+    - TestDatasetInspectNativeGzipJSONOutputSuccess
+    - TestDatasetListJSONOutput
+    - TestDatasetListTextOutput
+    - TestDatasetValidateDatasetNotFound
+    - TestDatasetValidateJSONOutputSuccess
+    - TestDatasetValidateNativeJSONOutputSuccess
+    - TestDatasetValidateUnsupportedEngine
+    - TestQueryExplainInvalidParamFormat
+    - TestQueryExplainJSONOutput
+    - TestQueryExplainMissingRequiredParam
+    - TestQueryExplainUnknownQuery
+    - TestQueryListJSONOutput
+    - TestQueryRunEnvPrecedenceForLimit
+    - TestQueryRunJSONLSuccess
+    - TestQueryRunLimitExceedsMaxRows
+    - TestVersionJSONOutput
+    - assertJSONFields
+    - expectCommandErrorContains
+    - newTestCommand
+    - runDatasetJSONStatusTest
+  import_files_list:
+    - bytes
+    - encoding/json
+    - github.com/spf13/cobra
+    - strings
+    - testing
+  language: go

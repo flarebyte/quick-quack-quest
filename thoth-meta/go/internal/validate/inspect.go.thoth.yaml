@@ -1,0 +1,14 @@
+locator: internal/validate/inspect.go
+meta:
+  function_list:
+    - InspectDataset
+    - InspectDatasetDefinition
+    - failInspectResult
+    - orderObservedColumns
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - slices
+    - strings
+    - time
+  language: go

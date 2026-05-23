@@ -1,0 +1,8 @@
+locator: internal/validate/inspect_native.go
+meta:
+  function_list:
+    - inspectWithNative
+  import_files_list:
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - strings
+  language: go

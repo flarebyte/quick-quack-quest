@@ -1,0 +1,26 @@
+locator: internal/validate/native.go
+meta:
+  function_list:
+    - decompressReader
+    - inferStringType
+    - inferValueType
+    - inspectCSV
+    - inspectJSON
+    - inspectNDJSON
+    - inspectNativeFile
+    - promoteType
+    - validateWithNative
+  import_files_list:
+    - bufio
+    - compress/gzip
+    - encoding/csv
+    - encoding/json
+    - fmt
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - github.com/klauspost/compress/zstd
+    - io
+    - os
+    - strconv
+    - strings
+    - time
+  language: go

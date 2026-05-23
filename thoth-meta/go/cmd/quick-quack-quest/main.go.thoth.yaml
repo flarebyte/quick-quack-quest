@@ -1,0 +1,9 @@
+locator: cmd/quick-quack-quest/main.go
+meta:
+  function_list:
+    - main
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/quick-quack-quest/internal/cli
+    - os
+  language: go

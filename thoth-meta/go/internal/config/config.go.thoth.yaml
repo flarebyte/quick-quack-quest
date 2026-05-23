@@ -1,0 +1,15 @@
+locator: internal/config/config.go
+meta:
+  function_list:
+    - LoadAndValidate
+    - findRepoRoot
+    - normalizeDatasetPaths
+    - toAbsPath
+  import_files_list:
+    - cuelang.org/go/cue
+    - cuelang.org/go/cue/cuecontext
+    - cuelang.org/go/cue/load
+    - fmt
+    - os
+    - path/filepath
+  language: go

@@ -1,0 +1,12 @@
+locator: internal/validate/validate_test.go
+meta:
+  function_list:
+    - TestResolveEnginePrecedence
+    - TestValidateDatasetNativeParquetUnsupported
+    - TestValidateDatasetNativeUnsupportedCompression
+    - expectErrorID
+    - loadSpec
+  import_files_list:
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - testing
+  language: go

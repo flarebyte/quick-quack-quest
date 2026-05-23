@@ -4,6 +4,7 @@ FLYB := flyb
 GH := gh
 GO := go
 BUN := bun
+THOTH := thoth
 DOC_CONFIG := doc/design-meta
 GHF_CONFIG := .gh-flarebyte.cue
 GO_CACHE_DIR := $(CURDIR)/.gocache

@@ -1,0 +1,35 @@
+locator: internal/validate/duckdb.go
+meta:
+  function_list:
+    - ValidateDataset
+    - ValidateDatasetDefinition
+    - countRowsChecked
+    - describeFile
+    - describeQuery
+    - discoverFiles
+    - failDatasetResult
+    - findDataset
+    - normalizeType
+    - pickDeterministicSample
+    - randomSeed
+    - resolveCompression
+    - resolveEngine
+    - resolveSampleRows
+    - sourceExpr
+    - supportsValidationCombo
+    - validateDeclaredSchema
+    - validateWithDuckDB
+  import_files_list:
+    - crypto/rand
+    - database/sql
+    - encoding/binary
+    - fmt
+    - github.com/duckdb/duckdb-go/v2
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - hash/fnv
+    - os
+    - path/filepath
+    - slices
+    - strings
+    - time
+  language: go
