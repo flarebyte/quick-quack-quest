@@ -124,17 +124,9 @@ type Field struct {
 }
 
 func LoadAndValidate(path string) (*Spec, error) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return nil, &ConfigError{ID: ErrIDConfigLoad, Message: "resolve config path", Cause: err}
-	}
+	abs, _ := filepath.Abs(path)
 	dir := filepath.Dir(abs)
-	_ = filepath.Base(abs)
-
 	instances := load.Instances([]string{"."}, &load.Config{Dir: dir})
-	if len(instances) == 0 {
-		return nil, &ConfigError{ID: ErrIDConfigLoad, Message: "no CUE instances found"}
-	}
 
 	ctx := cuecontext.New()
 	val := ctx.BuildInstance(instances[0])

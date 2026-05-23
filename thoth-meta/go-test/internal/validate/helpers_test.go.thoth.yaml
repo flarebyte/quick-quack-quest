@@ -1,0 +1,32 @@
+locator: internal/validate/helpers_test.go
+meta:
+  function_list:
+    - TestDiscoverFilesErrors
+    - TestDiscoverFilesPartitionedAndSampling
+    - TestDiscoverFilesSingleFileAndMaxFiles
+    - TestInferStringType
+    - TestInferValueType
+    - TestInspectDatasetDefinitionErrorBranches
+    - TestInspectDatasetErrorsAndOrdering
+    - TestPickDeterministicSampleOverLimit
+    - TestPromoteType
+    - TestRandomSeedFallbackOnReadError
+    - TestResolveCompressionAndSampleRows
+    - TestResolveEngineDefaultDuckDBAndCompressionAuto
+    - TestResolveEngineSpecFallbackAndRandomSeed
+    - TestSupportsValidationCombo
+    - TestValidateDatasetDefinitionDuckDBPath
+    - TestValidateDatasetDefinitionNativeSwitchBranch
+    - TestValidateDeclaredSchemaMissingField
+    - TestValidateErrorHelpersAndDatasetBranches
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - io
+    - os
+    - path/filepath
+    - reflect
+    - strings
+    - testing
+    - time
+  language: go

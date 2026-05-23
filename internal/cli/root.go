@@ -160,12 +160,7 @@ func newConfigValidateCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := config.LoadAndValidate(configPath)
 			if err != nil {
-				if cErr, ok := err.(*config.ConfigError); ok {
-					_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%s\n", cErr.Error())
-					return fmt.Errorf("%s", cErr.ID)
-				}
-				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "%v\n", err)
-				return err
+				return renderConfigError(cmd, err)
 			}
 			payload := validatePayload{Status: "ok", Path: configPath}
 			return writeOutput(cmd.OutOrStdout(), format, payload, fmt.Sprintf("config is valid: %s", configPath))
@@ -441,6 +436,10 @@ type runResult struct {
 	rowsEmitted int
 }
 
+var openDuckDB = func() (*sql.DB, error) {
+	return sql.Open("duckdb", "")
+}
+
 func wrapQueryRunError(queryID, stage, format string, limit, maxRows, timeout int, outputPath string, cause error) error {
 	if cause == nil {
 		return nil
@@ -454,7 +453,7 @@ func wrapQueryRunError(queryID, stage, format string, limit, maxRows, timeout in
 
 func runQuery(spec *config.Spec, q config.Query, params map[string]string, opts runOptions) (runResult, error) {
 	_ = spec
-	db, err := sql.Open("duckdb", "")
+	db, err := openDuckDB()
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return runResult{}, fmt.Errorf("%s: timeout=%d", contract.ErrIDQueryTimeout, opts.timeout)
@@ -723,11 +722,15 @@ func scanRowMap(rows *sql.Rows, cols []string) (map[string]any, error) {
 }
 
 func isTTY(_ uintptr) bool {
-	fi, err := os.Stderr.Stat()
+	fi, err := stderrStat()
 	if err != nil {
 		return false
 	}
 	return (fi.Mode() & os.ModeCharDevice) != 0
+}
+
+var stderrStat = func() (os.FileInfo, error) {
+	return os.Stderr.Stat()
 }
 
 func newDatasetValidateCommand() *cobra.Command {

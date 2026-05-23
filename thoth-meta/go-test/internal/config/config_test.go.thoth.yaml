@@ -2,8 +2,13 @@ locator: internal/config/config_test.go
 meta:
   architecture_notes: Tests assert error IDs directly so CLI and automation can rely on stable diagnostics.
   function_list:
+    - TestConfigErrorMethodsAndHelpers
+    - TestConfigErrorStringWithoutCause
+    - TestLoadAndValidateDecodeAndMissingCliSpecErrors
+    - TestLoadAndValidateDecodeErrorID
     - TestLoadAndValidateFailure
     - TestLoadAndValidateSuccess
+    - TestNormalizeDatasetPaths
     - mustWrite
   import_files_list:
     - os

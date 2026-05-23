@@ -1,0 +1,21 @@
+locator: internal/validate/inspect_runtime_test.go
+meta:
+  function_list:
+    - TestInspectDatasetDefinitionSuccessAndErrors
+    - TestInspectDatasetWrapperSuccess
+    - TestInspectWithDuckDBAndNative
+    - TestInspectWithDuckDBErrors
+    - TestInspectWithDuckDBMultiFileBranch
+    - TestInspectWithDuckDBNoColumnsBranch
+    - TestInspectWithDuckDBOpenDBErrorBranch
+    - TestInspectWithDuckDBRowsErrBranch
+    - TestInspectWithDuckDBSampleSizeBreak
+  import_files_list:
+    - database/sql
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - io
+    - os
+    - path/filepath
+    - strings
+    - testing
+  language: go

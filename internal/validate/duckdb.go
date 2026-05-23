@@ -122,13 +122,14 @@ func ValidateDatasetDefinition(spec *config.Spec, d config.Dataset, opts Options
 		return failDatasetResult(result, start, ErrIDCompatibilityUnsupported, fmt.Sprintf("validation is not supported for format=%s compression=%s engine=%s", d.Format, compression, engine), nil)
 	}
 
-	switch engine {
-	case "duckdb":
+	if engine == "duckdb" {
 		return validateWithDuckDB(spec, d, opts, result, start)
-	case "native":
-		return validateWithNative(spec, d, opts, result, start)
 	}
-	return result, nil
+	return validateWithNative(spec, d, opts, result, start)
+}
+
+var openValidateDuckDB = func() (*sql.DB, error) {
+	return sql.Open("duckdb", "")
 }
 
 func validateWithDuckDB(spec *config.Spec, d config.Dataset, opts Options, result DatasetResult, start time.Time) (DatasetResult, error) {
@@ -138,7 +139,7 @@ func validateWithDuckDB(spec *config.Spec, d config.Dataset, opts Options, resul
 	}
 	result.FilesScanned = len(files)
 
-	db, err := sql.Open("duckdb", "")
+	db, err := openValidateDuckDB()
 	if err != nil {
 		return failDatasetResult(result, start, ErrIDDatasetValidateFailed, "open duckdb", err)
 	}
@@ -252,9 +253,11 @@ func discoverFiles(d config.Dataset, opts Options) ([]string, error) {
 	return files, nil
 }
 
+var randRead = rand.Read
+
 func randomSeed() int64 {
 	var b [8]byte
-	if _, err := rand.Read(b[:]); err != nil {
+	if _, err := randRead(b[:]); err != nil {
 		return 1
 	}
 	return int64(binary.LittleEndian.Uint64(b[:]))

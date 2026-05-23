@@ -1,0 +1,25 @@
+locator: internal/validate/native_io_test.go
+meta:
+  function_list:
+    - TestDecompressReaderAndCodecErrors
+    - TestDecompressReaderGzipErrorAndWrapCloserNil
+    - TestDecompressReaderZstdSuccess
+    - TestInspectCSVAndNDJSONErrorBranches
+    - TestInspectNDJSONBlankLinesAndSampleLimit
+    - TestInspectNativeFileCSVJSONNDJSON
+    - TestInspectNativeFileUnsupportedFormat
+    - TestValidateWithNativeSuccessAndErrors
+    - writeFile
+    - writeGzipFile
+  import_files_list:
+    - compress/gzip
+    - encoding/json
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - github.com/klauspost/compress/zstd
+    - io
+    - os
+    - path/filepath
+    - strings
+    - testing
+    - time
+  language: go

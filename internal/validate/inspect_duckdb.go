@@ -12,8 +12,16 @@ import (
 	"github.com/flarebyte/quick-quack-quest/internal/config"
 )
 
+var openInspectDuckDB = func() (*sql.DB, error) {
+	return sql.Open("duckdb", "")
+}
+
+var inspectRowsErr = func(rows *sql.Rows) error {
+	return rows.Err()
+}
+
 func inspectWithDuckDB(d config.Dataset, files []string, sampleSize int) (map[string]ObservedColumn, error) {
-	db, err := sql.Open("duckdb", "")
+	db, err := openInspectDuckDB()
 	if err != nil {
 		return nil, err
 	}
@@ -43,15 +51,12 @@ func inspectWithDuckDB(d config.Dataset, files []string, sampleSize int) (map[st
 				}
 				continue
 			}
-			if normalizeType(cur.DuckDBType) != normalizeType(colType) {
-				out[k] = ObservedColumn{Name: colName, DuckDBType: "VARCHAR", Nullable: true}
-			}
 			if strings.EqualFold(nullable, "YES") {
 				cur.Nullable = true
 				out[k] = cur
 			}
 		}
-		if err := rows.Err(); err != nil {
+		if err := inspectRowsErr(rows); err != nil {
 			_ = rows.Close()
 			return nil, err
 		}
