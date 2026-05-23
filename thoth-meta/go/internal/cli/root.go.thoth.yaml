@@ -39,6 +39,7 @@ meta:
     - scanRowMap
     - sourceExprForRun
     - wireValidateFlags
+    - wrapQueryRunError
     - writeDatasetTable
     - writeJSON
     - writeOutput
@@ -58,6 +59,7 @@ meta:
     - os
     - path/filepath
     - regexp
+    - runtime
     - slices
     - strconv
     - strings
