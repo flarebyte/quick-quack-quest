@@ -97,7 +97,6 @@ build: {
   artifactTargetSuffix: true
   targets: [
     "darwin-arm64",
-    "linux-amd64",
   ]
 }
 
