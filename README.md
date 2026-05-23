@@ -8,6 +8,21 @@
 
 ## CLI perspective
 
+## Installation
+
+Install with Homebrew (Flarebyte tap):
+
+```bash
+brew install flarebyte/tap/quick-quack-quest
+```
+
+Run the CLI:
+
+```bash
+quack version --format json
+```
+
+
 From a user perspective, the CLI lets you:
 
 - Declare datasets (CSV, JSON, NDJSON, Parquet), schema fields, compression, and optional homepage/source metadata.
@@ -76,9 +91,9 @@ cliSpec: {
 Run with a custom config path:
 
 ```bash
-quick-quack-quest config validate --config ./path/to/cli-config.cue
-quick-quack-quest dataset validate sales_daily --config ./path/to/cli-config.cue --format json
-quick-quack-quest query run sales_by_country --config ./path/to/cli-config.cue --param start_date=2026-01-01 --param end_date=2026-01-31 --format table
+quack config validate --config ./path/to/cli-config.cue
+quack dataset validate sales_daily --config ./path/to/cli-config.cue --format json
+quack query run sales_by_country --config ./path/to/cli-config.cue --param start_date=2026-01-01 --param end_date=2026-01-31 --format table
 ```
 
 ## Command groups

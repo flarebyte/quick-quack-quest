@@ -56,8 +56,9 @@ type validatePayload struct {
 
 func NewRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:   "quick-quack-quest",
-		Short: "Validate datasets and run parameterized DuckDB queries",
+		Use:     "quack",
+		Aliases: []string{"quick-quack-quest"},
+		Short:   "Validate datasets and run parameterized DuckDB queries",
 	}
 
 	rootCmd.AddCommand(newVersionCommand())
