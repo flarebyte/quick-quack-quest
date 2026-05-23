@@ -115,5 +115,5 @@ thoth-meta-go-test:
 	$(THOTH) run --config ./pipeline-go-test-maat.thoth.cue
 
 thoth-meta-ts-e2e:
-        $(THOTH) run --config ./pipeline-ts-e2e-maat.thoth.cue
+	$(THOTH) run --config ./pipeline-ts-e2e-maat.thoth.cue
 

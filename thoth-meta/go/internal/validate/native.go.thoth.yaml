@@ -1,7 +1,5 @@
 locator: internal/validate/native.go
 meta:
-  purpose: Implement native file-based validation and type inference without DuckDB.
-  responsibilities: Read CSV/JSON/NDJSON (with compression), infer field types, and validate schema compatibility.
   architecture_notes: Native path intentionally excludes parquet and uses conservative type promotion rules.
   function_list:
     - decompressReader
@@ -27,3 +25,5 @@ meta:
     - strings
     - time
   language: go
+  purpose: Implement native file-based validation and type inference without DuckDB.
+  responsibilities: Read CSV/JSON/NDJSON (with compression), infer field types, and validate schema compatibility.

@@ -1,7 +1,5 @@
 locator: internal/validate/duckdb.go
 meta:
-  purpose: Orchestrate dataset validation and DuckDB-backed schema/row checks.
-  responsibilities: Resolve options, discover files, validate declared schema, and return structured result/errors.
   architecture_notes: Shared validation orchestration lives here while engine-specific readers are delegated.
   function_list:
     - ValidateDataset
@@ -36,3 +34,5 @@ meta:
     - strings
     - time
   language: go
+  purpose: Orchestrate dataset validation and DuckDB-backed schema/row checks.
+  responsibilities: Resolve options, discover files, validate declared schema, and return structured result/errors.
