@@ -38,3 +38,5 @@ tmp/
 # Local Go caches
 .gocache/
 .gomodcache/
+
+build/

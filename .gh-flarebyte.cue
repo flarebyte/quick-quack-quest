@@ -103,6 +103,9 @@ build: {
 
 go: {
   toolchain: "local"
+  cgo: {
+    enabled: true
+  }
 }
 
 devOutput: {
@@ -112,8 +115,8 @@ devOutput: {
 }
 
 coverage: {
-  default_min_percent: 90
-  fail_below_min:     true
+  min: 90
+  enforceMin:     true
 }
 
 release: {
