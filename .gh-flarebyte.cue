@@ -102,7 +102,7 @@ build: {
 }
 
 go: {
-  toolchain:     "local"
+  toolchain: "local"
 }
 
 devOutput: {

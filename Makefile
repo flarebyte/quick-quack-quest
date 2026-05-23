@@ -11,11 +11,12 @@ GO_CACHE_DIR := $(CURDIR)/.gocache
 GO_MOD_CACHE_DIR := $(CURDIR)/.gomodcache
 GO_PACKAGES := ./...
 GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DIR)
+LOCAL_BIN := $(CURDIR)/build/quick-quack-quest
 
 .PHONY: help check-tools install-tools-help \
 	format lint test e2e build release review complexity sec dup clean \
 	doc-validate doc-generate doc-design \
-	config-validate build-go test-go lint-go format-go test-unit test-race coverage cov
+	config-validate build-go build-local test-go lint-go format-go test-unit test-race coverage cov
 
 ## Public developer targets
 help: ## Show available commands.
@@ -77,7 +78,11 @@ config-validate: ## Validate gh flarebyte config.
 	$(GH) flarebyte config validate --config $(GHF_CONFIG)
 
 build-go: ## Build project artifacts from gh flarebyte config.
-	$(GH) flarebyte build
+	CGO_ENABLED=1 $(GH) flarebyte build
+
+build-local: ## Build local CLI binary into ./build (never project root).
+	@mkdir -p $(CURDIR)/build
+	CGO_ENABLED=1 $(GO_ENV) $(GO) build -o $(LOCAL_BIN) ./cmd/quick-quack-quest
 
 test-go: ## Run project tests via gh flarebyte.
 	$(GO_ENV) $(GH) flarebyte test
