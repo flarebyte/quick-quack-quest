@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -86,6 +87,7 @@ func newVersionCommand() *cobra.Command {
 					"version":               payload.Version,
 					"commit":                payload.Commit,
 					"built_at":              payload.BuiltAt,
+					"go_version":            runtime.Version(),
 				})
 			}
 			return writeOutput(cmd.OutOrStdout(), format, payload, fmt.Sprintf("%s %s (%s)", payload.Name, payload.Version, payload.Commit))
@@ -294,6 +296,7 @@ func newQueryRunCommand() *cobra.Command {
 	maxRows := 0
 	timeout := 0
 	chunkSize := 0
+	outputPath := ""
 	cmd := &cobra.Command{
 		Use:   "run <query-id>",
 		Short: "Run one parameterized query",
@@ -330,6 +333,15 @@ func newQueryRunCommand() *cobra.Command {
 				_, _ = fmt.Fprintf(cmd.ErrOrStderr(), "running query_id=%s\n", q.ID)
 			}
 			start := time.Now()
+			outWriter := cmd.OutOrStdout()
+			if outputPath != "" {
+				f, createErr := os.Create(outputPath)
+				if createErr != nil {
+					return createErr
+				}
+				defer f.Close()
+				outWriter = f
+			}
 			execRes, err := runQuery(spec, q, paramMap, runOptions{
 				format:    format,
 				stream:    effStream,
@@ -337,7 +349,7 @@ func newQueryRunCommand() *cobra.Command {
 				maxRows:   effMaxRows,
 				timeout:   effTimeout,
 				chunkSize: chunkSize,
-				out:       cmd.OutOrStdout(),
+				out:       outWriter,
 			})
 			if err != nil {
 				return err
@@ -368,6 +380,7 @@ func newQueryRunCommand() *cobra.Command {
 	cmd.Flags().IntVar(&maxRows, "max-rows", 0, "Maximum rows allowed to emit")
 	cmd.Flags().IntVar(&timeout, "timeout", 0, "Timeout in seconds")
 	cmd.Flags().IntVar(&chunkSize, "chunk-size", 0, "Chunk size rows")
+	cmd.Flags().StringVar(&outputPath, "output", "", "Write query output rows to this file path")
 	return cmd
 }
 
@@ -684,6 +697,7 @@ func newDatasetValidateCommand() *cobra.Command {
 		},
 	}
 	wireValidateFlags(cmd, &configPath, &format, &opts)
+	// TODO(spec): implement strict=false semantics; currently strict mode is always enforced.
 	cmd.Flags().Bool("strict", true, "Fail when schema mismatch is found")
 	return cmd
 }
