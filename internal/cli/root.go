@@ -59,6 +59,14 @@ func NewRootCommand() *cobra.Command {
 		Use:     "quack",
 		Aliases: []string{"quick-quack-quest"},
 		Short:   "Validate datasets and run parameterized DuckDB queries",
+		Long: "quack validates declared datasets and executes parameterized DuckDB queries " +
+			"from a CUE config file. Use --config on commands to point to your own cliSpec.",
+		Example: strings.Join([]string{
+			"quack config validate --config ./cli-config.cue",
+			"quack dataset list --config ./cli-config.cue",
+			"quack dataset validate sales_daily --config ./cli-config.cue --format json",
+			"quack query run sales_by_country --config ./cli-config.cue --param start_date=2026-01-01 --param end_date=2026-01-31 --format table",
+		}, "\n"),
 	}
 
 	rootCmd.AddCommand(newVersionCommand())
@@ -74,6 +82,11 @@ func newVersionCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
 		Short: "Print CLI version and build metadata",
+		Long:  "Show CLI version/build information for support and release traceability.",
+		Example: strings.Join([]string{
+			"quack version",
+			"quack version --format json",
+		}, "\n"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			payload := versionPayload{
 				Name:    "quick-quack-quest",
@@ -102,6 +115,7 @@ func newConfigCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "config",
 		Short: "Config operations",
+		Long:  "Validate and inspect CUE configuration used by dataset and query commands.",
 	}
 	cmd.AddCommand(newConfigValidateCommand())
 	return cmd
@@ -111,6 +125,7 @@ func newDatasetCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "dataset",
 		Short: "Dataset operations",
+		Long:  "List, validate, and inspect datasets declared in cliSpec.datasets.",
 	}
 	cmd.AddCommand(newDatasetListCommand())
 	cmd.AddCommand(newDatasetValidateCommand())
@@ -123,6 +138,7 @@ func newQueryCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "query",
 		Short: "Query catalog operations",
+		Long:  "List, explain, and run parameterized queries declared in cliSpec.queries.",
 	}
 	cmd.AddCommand(newQueryListCommand())
 	cmd.AddCommand(newQueryExplainCommand())
@@ -136,6 +152,11 @@ func newConfigValidateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate",
 		Short: "Validate CUE config structure and references",
+		Long:  "Load the CUE config, validate schema shape, and resolve referenced paths.",
+		Example: strings.Join([]string{
+			"quack config validate --config ./cli-config.cue",
+			"quack config validate --config ./cli-config.cue --format json",
+		}, "\n"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			_, err := config.LoadAndValidate(configPath)
 			if err != nil {
@@ -182,6 +203,11 @@ func newDatasetListCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List declared datasets and metadata",
+		Long:  "Print datasets from cliSpec.datasets with format/layout/compression and ownership metadata.",
+		Example: strings.Join([]string{
+			"quack dataset list --config ./cli-config.cue",
+			"quack dataset list --config ./cli-config.cue --format json",
+		}, "\n"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := config.LoadAndValidate(configPath)
 			if err != nil {
@@ -213,6 +239,11 @@ func newQueryListCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List declared queries",
+		Long:  "Print query ids, required datasets, and parameter counts from cliSpec.queries.",
+		Example: strings.Join([]string{
+			"quack query list --config ./cli-config.cue",
+			"quack query list --config ./cli-config.cue --format json",
+		}, "\n"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := config.LoadAndValidate(configPath)
 			if err != nil {
@@ -241,7 +272,12 @@ func newQueryExplainCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "explain <query-id>",
 		Short: "Explain one query definition",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Show resolved SQL template metadata without executing the query.",
+		Example: strings.Join([]string{
+			"quack query explain sales_by_country --config ./cli-config.cue",
+			"quack query explain sales_by_country --config ./cli-config.cue --param start_date=2026-01-01 --param end_date=2026-01-31 --format json",
+		}, "\n"),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := config.LoadAndValidate(configPath)
 			if err != nil {
@@ -301,7 +337,13 @@ func newQueryRunCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run <query-id>",
 		Short: "Run one parameterized query",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Execute a query against declared datasets with runtime parameter binding and safety limits.",
+		Example: strings.Join([]string{
+			"quack query run sales_by_country --config ./cli-config.cue --param start_date=2026-01-01 --param end_date=2026-01-31 --format table",
+			"quack query run sales_by_country --config ./cli-config.cue --param start_date=2026-01-01 --param end_date=2026-01-31 --format jsonl --stream",
+			"quack query run sales_by_country --config ./cli-config.cue --format csv --output ./out.csv",
+		}, "\n"),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := config.LoadAndValidate(configPath)
 			if err != nil {
@@ -684,7 +726,12 @@ func newDatasetValidateCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate <dataset-id>",
 		Short: "Validate one dataset file contract",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Validate one declared dataset against schema, format, compression, and engine settings.",
+		Example: strings.Join([]string{
+			"quack dataset validate sales_daily --config ./cli-config.cue",
+			"quack dataset validate sales_daily --config ./cli-config.cue --format json --validation-engine native",
+		}, "\n"),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := config.LoadAndValidate(configPath)
 			if err != nil {
@@ -711,6 +758,11 @@ func newDatasetValidateAllCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "validate-all",
 		Short: "Validate all declared datasets",
+		Long:  "Run dataset validation for every dataset in cliSpec.datasets.",
+		Example: strings.Join([]string{
+			"quack dataset validate-all --config ./cli-config.cue",
+			"quack dataset validate-all --config ./cli-config.cue --fail-fast --format json",
+		}, "\n"),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := config.LoadAndValidate(configPath)
 			if err != nil {
@@ -747,7 +799,12 @@ func newDatasetInspectCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "inspect <dataset-id>",
 		Short: "Inspect observed dataset schema",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Inspect a dataset and report discovered columns/types from sampled rows.",
+		Example: strings.Join([]string{
+			"quack dataset inspect sales_daily --config ./cli-config.cue",
+			"quack dataset inspect events_stream --config ./cli-config.cue --validation-engine native --sample-size 100 --format json",
+		}, "\n"),
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			spec, err := config.LoadAndValidate(configPath)
 			if err != nil {
