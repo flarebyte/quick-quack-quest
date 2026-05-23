@@ -88,17 +88,10 @@ test-unit: ## Run Go tests.
 test-race: ## Run Go tests with race detector.
 	@if [ -f go.mod ]; then $(GO_ENV) $(GO) test -race $(GO_PACKAGES); else echo "go_tests_race=skipped (no go.mod)"; fi
 
-coverage: ## Run Go tests with coverage summary.
-	@if [ -f go.mod ]; then \
-		mkdir -p $(CURDIR)/tmp; \
-		$(GO_ENV) $(GO) test -coverprofile=$(CURDIR)/tmp/coverage.out -covermode=count $(GO_PACKAGES); \
-		$(GO_ENV) $(GO) tool cover -func=$(CURDIR)/tmp/coverage.out; \
-	else \
-		echo "go_coverage=skipped (no go.mod)"; \
-	fi
+coverage: cov ## Run coverage checks via gh flarebyte.
 
-cov: ## Enforce minimum test coverage via gh flarebyte.
-	$(GO_ENV) $(GH) flarebyte cov --min 90
+cov: ## Enforce configured minimum test coverage via gh flarebyte.
+	$(GO_ENV) $(GH) flarebyte cov
 
 lint-go: ## Run lint checks via gh flarebyte.
 	$(GO_ENV) $(GH) flarebyte lint
@@ -116,4 +109,3 @@ thoth-meta-go-test:
 
 thoth-meta-ts-e2e:
 	$(THOTH) run --config ./pipeline-ts-e2e-maat.thoth.cue
-
