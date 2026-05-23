@@ -380,7 +380,7 @@ func newQueryRunCommand() *cobra.Command {
 			if outputPath != "" {
 				f, createErr := os.Create(outputPath)
 				if createErr != nil {
-					return createErr
+					return wrapQueryRunError(q.ID, "create_output", format, effLimit, effMaxRows, effTimeout, outputPath, createErr)
 				}
 				defer f.Close()
 				outWriter = f
@@ -395,7 +395,7 @@ func newQueryRunCommand() *cobra.Command {
 				out:       outWriter,
 			})
 			if err != nil {
-				return err
+				return wrapQueryRunError(q.ID, "execute", format, effLimit, effMaxRows, effTimeout, outputPath, err)
 			}
 			summary := map[string]any{
 				"output_schema_version": "v1",
@@ -439,6 +439,17 @@ type runOptions struct {
 
 type runResult struct {
 	rowsEmitted int
+}
+
+func wrapQueryRunError(queryID, stage, format string, limit, maxRows, timeout int, outputPath string, cause error) error {
+	if cause == nil {
+		return nil
+	}
+	if outputPath == "" {
+		outputPath = "stdout"
+	}
+	return fmt.Errorf("query run failed: query_id=%s stage=%s format=%s limit=%d max_rows=%d timeout_s=%d output=%s: %w",
+		queryID, stage, format, limit, maxRows, timeout, outputPath, cause)
 }
 
 func runQuery(spec *config.Spec, q config.Query, params map[string]string, opts runOptions) (runResult, error) {
