@@ -1,5 +1,8 @@
 locator: internal/validate/inspect.go
 meta:
+  purpose: Orchestrate dataset inspection and shape normalized inspection results.
+  responsibilities: Resolve engine/compression, dispatch to inspectors, and deterministically order observed columns.
+  architecture_notes: Inspection reuses validation error-ID conventions for consistent CLI integration.
   function_list:
     - InspectDataset
     - InspectDatasetDefinition

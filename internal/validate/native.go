@@ -1,3 +1,6 @@
+// purpose: Implement native file-based validation and type inference without DuckDB.
+// responsibilities: Read CSV/JSON/NDJSON (with compression), infer field types, and validate schema compatibility.
+// architecture notes: Native path intentionally excludes parquet and uses conservative type promotion rules.
 package validate
 
 import (

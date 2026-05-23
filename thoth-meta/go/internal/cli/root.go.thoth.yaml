@@ -1,5 +1,8 @@
 locator: internal/cli/root.go
 meta:
+  purpose: Implement the CLI surface for config, dataset, and query workflows.
+  responsibilities: Define commands and flags, call config/validate/query logic, and render output formats.
+  architecture_notes: Command wiring is centralized here to keep UX behavior and output-schema contracts consistent.
   function_list:
     - NewRootCommand
     - bindQuery

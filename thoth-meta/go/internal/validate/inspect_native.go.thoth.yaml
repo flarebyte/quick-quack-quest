@@ -1,5 +1,8 @@
 locator: internal/validate/inspect_native.go
 meta:
+  purpose: Collect observed column metadata using native readers across dataset files.
+  responsibilities: Inspect each file with native decoders and merge discovered column type information.
+  architecture_notes: Aggregation mirrors DuckDB inspection semantics for cross-engine output consistency.
   function_list:
     - inspectWithNative
   import_files_list:

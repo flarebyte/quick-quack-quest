@@ -1,3 +1,6 @@
+// purpose: Collect observed column metadata using native readers across dataset files.
+// responsibilities: Inspect each file with native decoders and merge discovered column type information.
+// architecture notes: Aggregation mirrors DuckDB inspection semantics for cross-engine output consistency.
 package validate
 
 import (

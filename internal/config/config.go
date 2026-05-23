@@ -1,3 +1,6 @@
+// purpose: Load and validate CUE configuration into the typed runtime specification.
+// responsibilities: Compile CUE input, decode cliSpec, normalize dataset paths, and map failures to config error IDs.
+// architecture notes: Path normalization happens at load time so downstream components can assume resolved paths.
 package config
 
 import (

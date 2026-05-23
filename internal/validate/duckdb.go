@@ -1,3 +1,6 @@
+// purpose: Orchestrate dataset validation and DuckDB-backed schema/row checks.
+// responsibilities: Resolve options, discover files, validate declared schema, and return structured result/errors.
+// architecture notes: Shared validation orchestration lives here while engine-specific readers are delegated.
 package validate
 
 import (

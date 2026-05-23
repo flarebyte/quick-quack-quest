@@ -1,3 +1,6 @@
+// purpose: Validate CLI command behavior and output contracts from an end-user perspective.
+// responsibilities: Execute representative commands and assert success payloads, errors, and precedence rules.
+// architecture notes: Tests are command-centric on purpose to catch wiring regressions across subcommands and flags.
 package cli
 
 import (

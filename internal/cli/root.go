@@ -1,3 +1,6 @@
+// purpose: Implement the CLI surface for config, dataset, and query workflows.
+// responsibilities: Define commands and flags, call config/validate/query logic, and render output formats.
+// architecture notes: Command wiring is centralized here to keep UX behavior and output-schema contracts consistent.
 package cli
 
 import (

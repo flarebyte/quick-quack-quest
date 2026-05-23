@@ -1,5 +1,8 @@
 locator: internal/validate/validate_test.go
 meta:
+  purpose: Verify validation option precedence and compatibility error contracts.
+  responsibilities: Load sample config, run dataset validation, and assert expected error IDs.
+  architecture_notes: Tests focus on contract-level outcomes rather than exhaustive dataset permutations.
   function_list:
     - TestResolveEnginePrecedence
     - TestValidateDatasetNativeParquetUnsupported

@@ -1,3 +1,6 @@
+// purpose: Verify validation option precedence and compatibility error contracts.
+// responsibilities: Load sample config, run dataset validation, and assert expected error IDs.
+// architecture notes: Tests focus on contract-level outcomes rather than exhaustive dataset permutations.
 package validate
 
 import (

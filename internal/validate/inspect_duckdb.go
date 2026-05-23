@@ -1,3 +1,6 @@
+// purpose: Collect observed column metadata by inspecting datasets through DuckDB.
+// responsibilities: Query file schemas via DuckDB and merge type/nullability observations across files.
+// architecture notes: Merge behavior favors widened nullability and promoted types to avoid data loss.
 package validate
 
 import (

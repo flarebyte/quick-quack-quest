@@ -1,3 +1,6 @@
+// purpose: Protect configuration loading and validation behavior against regressions.
+// responsibilities: Build temporary config fixtures and assert decode, validation, and path-resolution outcomes.
+// architecture notes: Tests assert error IDs directly so CLI and automation can rely on stable diagnostics.
 package config
 
 import (

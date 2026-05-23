@@ -1,3 +1,6 @@
+// purpose: Orchestrate dataset inspection and shape normalized inspection results.
+// responsibilities: Resolve engine/compression, dispatch to inspectors, and deterministically order observed columns.
+// architecture notes: Inspection reuses validation error-ID conventions for consistent CLI integration.
 package validate
 
 import (

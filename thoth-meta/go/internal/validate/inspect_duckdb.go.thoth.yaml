@@ -1,5 +1,8 @@
 locator: internal/validate/inspect_duckdb.go
 meta:
+  purpose: Collect observed column metadata by inspecting datasets through DuckDB.
+  responsibilities: Query file schemas via DuckDB and merge type/nullability observations across files.
+  architecture_notes: Merge behavior favors widened nullability and promoted types to avoid data loss.
   function_list:
     - inspectWithDuckDB
   import_files_list:

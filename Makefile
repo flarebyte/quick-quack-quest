@@ -106,10 +106,14 @@ lint-go: ## Run lint checks via gh flarebyte.
 format-go: ## Run formatting via gh flarebyte.
 	$(GO_ENV) $(GH) flarebyte format
 
-thoth-meta: thoth-meta-go thoth-meta-go-test
+thoth-meta: thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e
 
 thoth-meta-go:
 	$(THOTH) run --config ./pipeline-go-maat.thoth.cue
 
 thoth-meta-go-test:
 	$(THOTH) run --config ./pipeline-go-test-maat.thoth.cue
+
+thoth-meta-ts-e2e:
+        $(THOTH) run --config ./pipeline-ts-e2e-maat.thoth.cue
+

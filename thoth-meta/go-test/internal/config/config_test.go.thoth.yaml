@@ -1,5 +1,8 @@
 locator: internal/config/config_test.go
 meta:
+  purpose: Protect configuration loading and validation behavior against regressions.
+  responsibilities: Build temporary config fixtures and assert decode, validation, and path-resolution outcomes.
+  architecture_notes: Tests assert error IDs directly so CLI and automation can rely on stable diagnostics.
   function_list:
     - TestLoadAndValidateFailure
     - TestLoadAndValidateSuccess
