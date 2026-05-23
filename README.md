@@ -8,6 +8,21 @@
 
 ## CLI perspective
 
+## Installation
+
+Install with Homebrew (Flarebyte tap):
+
+```bash
+brew install flarebyte/tap/quick-quack-quest
+```
+
+Run the CLI:
+
+```bash
+quack version --format json
+```
+
+
 From a user perspective, the CLI lets you:
 
 - Declare datasets (CSV, JSON, NDJSON, Parquet), schema fields, compression, and optional homepage/source metadata.
@@ -27,6 +42,59 @@ The source of truth is CUE config under `doc/design-meta/examples/config/`:
 Design and command catalogs are documented under:
 
 - `doc/design/duckdb-cli-spec.md`
+
+## Quick CUE Config Snippets
+
+Use these minimal snippets to get started quickly.
+
+```cue
+package designmeta
+
+cliSpec: {
+  validation: {
+    engine: "duckdb"
+  }
+
+  datasets: [{
+    id:          "sales_daily"
+    name:        "Sales Daily"
+    format:      "csv"
+    layout:      "single_file"
+    path:        "./data/sales.csv"
+    compression: "none"
+    fields: [
+      {name: "sale_date", type: "DATE", nullable: false},
+      {name: "country", type: "VARCHAR", nullable: false},
+      {name: "revenue", type: "DOUBLE", nullable: false},
+    ]
+  }]
+
+  queries: [{
+    id:                "sales_by_country"
+    name:              "Sales by Country"
+    required_datasets: ["sales_daily"]
+    parameters: [
+      {name: "start_date", type: "DATE", required: true},
+      {name: "end_date", type: "DATE", required: true},
+    ]
+    sql: """
+      SELECT country, SUM(revenue) AS total_revenue
+      FROM sales_daily
+      WHERE sale_date BETWEEN $start_date AND $end_date
+      GROUP BY country
+      ORDER BY total_revenue DESC
+    """
+  }]
+}
+```
+
+Run with a custom config path:
+
+```bash
+quack config validate --config ./path/to/cli-config.cue
+quack dataset validate sales_daily --config ./path/to/cli-config.cue --format json
+quack query run sales_by_country --config ./path/to/cli-config.cue --param start_date=2026-01-01 --param end_date=2026-01-31 --format table
+```
 
 ## Command groups
 

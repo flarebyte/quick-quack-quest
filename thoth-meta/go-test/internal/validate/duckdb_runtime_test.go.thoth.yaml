@@ -1,0 +1,21 @@
+locator: internal/validate/duckdb_runtime_test.go
+meta:
+  function_list:
+    - TestCountRowsCheckedErrorBranch
+    - TestDescribeFileAndCountRowsChecked
+    - TestDescribeQueryAndSourceExpr
+    - TestNormalizeType
+    - TestValidateWithDuckDBDiscoverFilesErrorBranch
+    - TestValidateWithDuckDBOpenDBErrorBranch
+    - TestValidateWithDuckDBSchemaMismatchAndCountError
+    - TestValidateWithDuckDBSuccessAndReadFailure
+  import_files_list:
+    - database/sql
+    - github.com/duckdb/duckdb-go/v2
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - io
+    - os
+    - path/filepath
+    - testing
+    - time
+  language: go

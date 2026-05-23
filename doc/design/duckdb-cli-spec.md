@@ -322,28 +322,7 @@ cliSpec: #CliSpec & {
 ```cue
 package designmeta
 
-#DuckDBType:
-	| "BOOLEAN"
-	| "TINYINT"
-	| "SMALLINT"
-	| "INTEGER"
-	| "BIGINT"
-	| "UTINYINT"
-	| "USMALLINT"
-	| "UINTEGER"
-	| "UBIGINT"
-	| "FLOAT"
-	| "DOUBLE"
-	| "DECIMAL"
-	| "VARCHAR"
-	| "BLOB"
-	| "DATE"
-	| "TIME"
-	| "TIMESTAMP"
-	| "TIMESTAMPTZ"
-	| "INTERVAL"
-	| "UUID"
-	| "JSON"
+#DuckDBType: "BOOLEAN" | "TINYINT" | "SMALLINT" | "INTEGER" | "BIGINT" | "UTINYINT" | "USMALLINT" | "UINTEGER" | "UBIGINT" | "FLOAT" | "DOUBLE" | "DECIMAL" | "VARCHAR" | "BLOB" | "DATE" | "TIME" | "TIMESTAMP" | "TIMESTAMPTZ" | "INTERVAL" | "UUID" | "JSON"
 
 #DatasetFormat: "csv" | "json" | "ndjson" | "parquet"
 #DatasetLayout: "single_file" | "partitioned"

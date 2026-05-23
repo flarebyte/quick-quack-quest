@@ -1,0 +1,17 @@
+locator: e2e/cli.e2e.test.ts
+meta:
+  import_files_list:
+    - bun:test
+    - node:child_process
+    - node:path
+  language: typescript
+  testcase_titles_list:
+    - config validate succeeds
+    - dataset inspect returns columns
+    - dataset validate duckdb succeeds
+    - dataset validate native succeeds
+    - query list and explain work
+    - query run guardrail fails when limit exceeds max rows
+    - query run jsonl streaming works
+    - quick-quack-quest e2e
+    - version json includes output schema version

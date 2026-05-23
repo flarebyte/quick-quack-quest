@@ -2,13 +2,21 @@
 
 FLYB := flyb
 GH := gh
+GO := go
+BUN := bun
+THOTH := thoth
 DOC_CONFIG := doc/design-meta
 GHF_CONFIG := .gh-flarebyte.cue
+GO_CACHE_DIR := $(CURDIR)/.gocache
+GO_MOD_CACHE_DIR := $(CURDIR)/.gomodcache
+GO_PACKAGES := ./...
+GO_ENV := GOTOOLCHAIN=local GOCACHE=$(GO_CACHE_DIR) GOMODCACHE=$(GO_MOD_CACHE_DIR)
+LOCAL_BIN := $(CURDIR)/build/quick-quack-quest
 
 .PHONY: help check-tools install-tools-help \
 	format lint test e2e build release review complexity sec dup clean \
 	doc-validate doc-generate doc-design \
-	config-validate build-go test-go lint-go
+	config-validate build-go build-local test-go lint-go format-go test-unit test-race coverage cov
 
 ## Public developer targets
 help: ## Show available commands.
@@ -26,33 +34,35 @@ install-tools-help: ## Show how to install required tools.
 	@echo "go: https://go.dev/doc/install"
 	@echo "bun: https://bun.sh/docs/installation"
 
-format: doc-design ## Refresh generated design docs.
+format: format-go doc-design ## Format code via gh flarebyte and refresh generated design docs.
 
-lint: config-validate doc-validate ## Run configured lint checks.
+lint: config-validate doc-validate lint-go ## Run configured lint checks via gh flarebyte.
 
-test: doc-validate ## Run default automated checks.
+test: test-go ## Run default automated checks via gh flarebyte.
 
 e2e: ## Run TypeScript end-to-end tests with Bun.
-	bun test e2e
+	$(BUN) run e2e
 
 build: build-go ## Build distributable artifacts via gh flarebyte.
 
 release: ## Build and publish a GitHub release via gh flarebyte.
 	$(GH) flarebyte release
 
-review: lint test ## Run standard review gate.
+review: format test lint e2e ## Run standard review gate.
 
-complexity: ## No complexity scan is defined yet.
-	@echo "complexity=not_configured"
+complexity:
+	scc --sort complexity --by-file -i go . | head -n 15
+	scc --sort complexity --by-file -i ts . | head -n 15
 
-sec: ## No security scan is defined yet.
-	@echo "sec=not_configured"
+sec:
+	semgrep scan --config auto
 
-dup: ## No duplication scan is defined yet.
-	@echo "dup=not_configured"
+dup:
+	npx jscpd --format go --min-lines 10 --ignore "**/.gomodcache/**,**/.gocache/**,**/.e2e-bin/**,**/node_modules/**,**/dist/**" --gitignore .
+	npx jscpd --format typescript --min-lines 10 --gitignore .
 
 clean: ## Remove generated build artifacts.
-	rm -rf build
+	rm -rf ./build ./.gocache ./.gomodcache
 
 ## Documentation targets
 doc-validate: ## Validate flyb design-meta config.
@@ -68,10 +78,39 @@ config-validate: ## Validate gh flarebyte config.
 	$(GH) flarebyte config validate --config $(GHF_CONFIG)
 
 build-go: ## Build project artifacts from gh flarebyte config.
-	$(GH) flarebyte build
+	CGO_ENABLED=1 $(GH) flarebyte build
 
-test-go: ## Run Go tests when go.mod exists.
-	@if [ -f go.mod ]; then go test ./...; else echo "go_tests=skipped (no go.mod)"; fi
+build-local: ## Build local CLI binary into ./build (never project root).
+	@mkdir -p $(CURDIR)/build
+	CGO_ENABLED=1 $(GO_ENV) $(GO) build -o $(LOCAL_BIN) ./cmd/quick-quack-quest
 
-lint-go: ## Run Go vet when go.mod exists.
-	@if [ -f go.mod ]; then go vet ./...; else echo "go_vet=skipped (no go.mod)"; fi
+test-go: ## Run project tests via gh flarebyte.
+	$(GO_ENV) $(GH) flarebyte test
+
+test-unit: ## Run Go tests.
+	@if [ -f go.mod ]; then $(GO_ENV) $(GO) test $(GO_PACKAGES); else echo "go_tests=skipped (no go.mod)"; fi
+
+test-race: ## Run Go tests with race detector.
+	@if [ -f go.mod ]; then $(GO_ENV) $(GO) test -race $(GO_PACKAGES); else echo "go_tests_race=skipped (no go.mod)"; fi
+
+coverage: cov ## Run coverage checks via gh flarebyte.
+
+cov: ## Enforce configured minimum test coverage via gh flarebyte.
+	$(GO_ENV) $(GH) flarebyte cov
+
+lint-go: ## Run lint checks via gh flarebyte.
+	$(GO_ENV) $(GH) flarebyte lint
+
+format-go: ## Run formatting via gh flarebyte.
+	$(GO_ENV) $(GH) flarebyte format
+
+thoth-meta: thoth-meta-go thoth-meta-go-test thoth-meta-ts-e2e
+
+thoth-meta-go:
+	$(THOTH) run --config ./pipeline-go-maat.thoth.cue
+
+thoth-meta-go-test:
+	$(THOTH) run --config ./pipeline-go-test-maat.thoth.cue
+
+thoth-meta-ts-e2e:
+	$(THOTH) run --config ./pipeline-ts-e2e-maat.thoth.cue

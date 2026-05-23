@@ -97,8 +97,25 @@ build: {
   artifactTargetSuffix: true
   targets: [
     "darwin-arm64",
-    "linux-amd64",
   ]
+}
+
+go: {
+  toolchain: "local"
+  cgo: {
+    enabled: true
+  }
+}
+
+devOutput: {
+  color: "auto"
+  style: "per_test"
+  showPassed: true
+}
+
+coverage: {
+  min: 90
+  enforceMin:     true
 }
 
 release: {

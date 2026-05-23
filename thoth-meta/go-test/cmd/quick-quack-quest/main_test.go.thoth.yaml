@@ -1,0 +1,11 @@
+locator: cmd/quick-quack-quest/main_test.go
+meta:
+  function_list:
+    - TestMainUsesExitCodeFromRun
+    - TestRunSuccessAndFailure
+  import_files_list:
+    - bytes
+    - os
+    - strings
+    - testing
+  language: go

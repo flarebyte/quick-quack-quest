@@ -1,0 +1,18 @@
+locator: internal/config/config.go
+meta:
+  architecture_notes: Path normalization happens at load time so downstream components can assume resolved paths.
+  function_list:
+    - LoadAndValidate
+    - findRepoRoot
+    - normalizeDatasetPaths
+    - toAbsPath
+  import_files_list:
+    - cuelang.org/go/cue
+    - cuelang.org/go/cue/cuecontext
+    - cuelang.org/go/cue/load
+    - fmt
+    - os
+    - path/filepath
+  language: go
+  purpose: Load and validate CUE configuration into the typed runtime specification.
+  responsibilities: Compile CUE input, decode cliSpec, normalize dataset paths, and map failures to config error IDs.

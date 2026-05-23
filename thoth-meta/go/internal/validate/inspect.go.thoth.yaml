@@ -1,0 +1,17 @@
+locator: internal/validate/inspect.go
+meta:
+  architecture_notes: Inspection reuses validation error-ID conventions for consistent CLI integration.
+  function_list:
+    - InspectDataset
+    - InspectDatasetDefinition
+    - failInspectResult
+    - orderObservedColumns
+  import_files_list:
+    - fmt
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - slices
+    - strings
+    - time
+  language: go
+  purpose: Orchestrate dataset inspection and shape normalized inspection results.
+  responsibilities: Resolve engine/compression, dispatch to inspectors, and deterministically order observed columns.

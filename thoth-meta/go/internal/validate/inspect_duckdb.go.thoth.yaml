@@ -1,0 +1,14 @@
+locator: internal/validate/inspect_duckdb.go
+meta:
+  architecture_notes: Merge behavior favors widened nullability and promoted types to avoid data loss.
+  function_list:
+    - inspectWithDuckDB
+  import_files_list:
+    - database/sql
+    - fmt
+    - github.com/duckdb/duckdb-go/v2
+    - github.com/flarebyte/quick-quack-quest/internal/config
+    - strings
+  language: go
+  purpose: Collect observed column metadata by inspecting datasets through DuckDB.
+  responsibilities: Query file schemas via DuckDB and merge type/nullability observations across files.
